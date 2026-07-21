@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk '/m_Name: Game Manager/{found=1} found' \"Assets/Scenes/Main Scene.unity\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\)['dependencies']; print\\(json.dumps\\(d.get\\('org.khronos.unitygltf'\\),indent=2\\)\\)\")",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(grep -iE \"gitignore|^\\\\.git$\")",
+      "Bash(gh --version)",
+      "Bash(gh auth *)",
+      "Bash(cat)",
+      "Bash(python /tmp/reach.py)",
+      "Bash(u=\"C:/Users/Abdul/AppData/Local/Temp/claude/unreachable.txt\"; echo \"=== .asset ===\"; grep -i \"\\\\.asset$\" \"$u\" | sed 's|.*/Assets/|Assets/|'; echo; echo \"=== .inputactions / .pdf / .md / .txt ===\"; grep -iE \"\\\\.\\(inputactions|pdf|md|txt\\)$\" \"$u\" | sed 's|.*/Assets/|Assets/|'; echo; echo \"=== .jpg ===\"; grep -i \"\\\\.jpg$\" \"$u\" | sed 's|.*/Assets/|Assets/|' | head -25)"
+    ]
+  }
+}

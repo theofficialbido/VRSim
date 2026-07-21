@@ -1,0 +1,12 @@
+Add Colliders
+Add Missing Button Left of generators
+Sheeel Mayeten Om El sot el zany dh
+Add Small Stairs next to Caravan
+Add Background
+Fix Textures and Make look Realistic
+Add Quality of life features
+Add teleportation using ground
+Fix proportions
+Find Bettter alternative to buttons
+Cut Up all the Rig to Make Boundaries
+Add Material To Rig Floor

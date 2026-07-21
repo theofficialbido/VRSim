@@ -1,0 +1,18 @@
+# Unity Engine Data for Python Comparison
+# Generated: 2025-09-01 15:11:56
+
+# Core Parameters
+bit_depth = 1000
+tds_position = 85
+rotary_rpm = 120
+wob = 25000
+hook_load = 200000
+flow_rate = 0
+pump_pressure = 0
+rop = 0
+torque = 0
+
+# BOP States
+pipe_rams = 'Open'
+choke_manifold = 'Closed'
+kill_manifold = 'Closed'
