@@ -1,58 +1,86 @@
+using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using VRSIM.Net;
-using VRSIM.Presentation;
 using VRSIM.State;
 
 /// <summary>
-/// Drives the BOP panel's status lights, pressure readouts and master valve
-/// from engine state.
+/// Drives the BOP panel's lights from the per-component status the engine
+/// sends.
 ///
-/// Display only. Nothing here writes to rig state -- operating a BOP control
-/// sends a command, and the change comes back through <see cref="RigState"/>.
-/// That keeps a single authority for whether a ram is open.
+/// Every part of the BOP is one entry in <see cref="components"/>, and every
+/// state that part can be in gets its own light assignment. That covers both
+/// shapes the panel actually uses: a part with a green lamp and a red lamp, and
+/// a part with a single lamp that is simply on or off. Adding a ram, or a part
+/// with three lamps, is Inspector work rather than a code change.
 ///
-/// Two things are deliberately unchanged from the previous implementation:
-/// the public field names, because the scene has twelve lights and four
-/// readouts wired to them by hand and renaming a serialized field silently
-/// drops the assignment; and the global namespace, for the same reason.
+/// Display only. Operating a BOP control sends a command; the lights move when
+/// the resulting state comes back, so the panel can never claim a ram is shut
+/// that the engine does not agree is shut.
 /// </summary>
 public class BOPPanelController : MonoBehaviour
 {
+    /// <summary>One light, and the state that turns it on.</summary>
+    [Serializable]
+    public class StateLight
+    {
+        [Tooltip("Engine state this light represents: open, closed, moving, fault")]
+        public string state = "open";
+
+        [Tooltip("Object to switch on while the part is in this state")]
+        public GameObject light;
+
+        [Tooltip("Colour applied while lit. Ignored if the object has no renderer or Light.")]
+        public Color colour = Color.green;
+    }
+
+    /// <summary>One part of the BOP, and all of its lights.</summary>
+    [Serializable]
+    public class ComponentLights
+    {
+        [Tooltip("Engine component id, e.g. annular_1, pipe_ram_1, blind_shear_ram, "
+               + "kill_line, choke_line. Must match docs/protocol.md exactly.")]
+        public string componentId = "annular_1";
+
+        [Tooltip("Name used in warnings. Cosmetic.")]
+        public string label = "Annular";
+
+        [Tooltip("One entry per case. A part with a green and a red lamp gets two "
+               + "entries; a part with a single on/off lamp gets one.")]
+        public List<StateLight> lights = new List<StateLight>();
+
+        [Tooltip("If several ids are listed, the worst state wins: closed beats "
+               + "moving beats open. Use for the three pipe rams sharing one lamp.")]
+        public List<string> alsoCombine = new List<string>();
+
+        [NonSerialized] public string LastState;
+    }
+
     [Header("Data Source")]
     [Tooltip("Left empty, the first RigConnection in the scene is used.")]
     public RigConnection connection;
 
-    [Header("BOP Status Lights - Separate Green/Red")]
-    [Tooltip("Green lights for OPEN state")]
-    public GameObject annularGreenLight;
-    public GameObject pipeRamGreenLight;
-    public GameObject blindRamGreenLight;
-    public GameObject shearRamGreenLight;
-    public GameObject killLineGreenLight;
-    public GameObject chokeLineGreenLight;
-
-    [Tooltip("Red lights for CLOSED state")]
-    public GameObject annularRedLight;
-    public GameObject pipeRamRedLight;
-    public GameObject blindRamRedLight;
-    public GameObject shearRamRedLight;
-    public GameObject killLineRedLight;
-    public GameObject chokeLineRedLight;
+    [Header("BOP Components And Their Lights")]
+    [Tooltip("One entry per part of the BOP. Assign a light for each state the "
+           + "part can be in.")]
+    public List<ComponentLights> components = new List<ComponentLights>();
 
     [Header("Master Valve")]
-    public GameObject masterValveGreenLight;
-    public GameObject masterValveRedLight;
-    [Tooltip("The master valve wheel to rotate")]
+    [Tooltip("Master valve uses the same per-state assignment. Its states are "
+           + "open and closed.")]
+    public ComponentLights masterValve = new ComponentLights
+    {
+        componentId = "master_valve",
+        label = "Master Valve",
+    };
+    [Tooltip("Optional wheel to turn as the valve opens")]
     public GameObject masterValveObject;
-    [Tooltip("Degrees the wheel turns between closed and open")]
     public float valveOpenAngle = 90f;
-    [Tooltip("Axis to rotate around (default Z for a wheel)")]
     public Vector3 rotationAxis = new Vector3(0, 0, 1);
     public float valveRotationSpeed = 2f;
 
-    [Header("BOP Pressure Displays")]
-    [Tooltip("World-space readouts. These are the ones the scene actually uses.")]
+    [Header("Pressure Readouts (world space)")]
     public TextMeshPro annularPressure3D;
     public TextMeshPro manifoldPressure3D;
     public TextMeshPro accumulatorPressure3D;
@@ -67,38 +95,26 @@ public class BOPPanelController : MonoBehaviour
     public float airLowPsi = 100f;
 
     [Header("Stale Display")]
-    [Tooltip("Dim readouts when the engine stops sending, so a frozen number "
-           + "is never mistaken for a live one.")]
+    [Tooltip("Dim readouts when the engine stops sending, so a frozen number is "
+           + "never mistaken for a live one.")]
     public bool dimWhenStale = true;
+
+    [Header("Diagnostics")]
+    [Tooltip("Warn once on connect for any component id the engine never sends.")]
+    public bool validateOnConnect = true;
 
     private static readonly Color NormalColour = Color.white;
     private static readonly Color LowColour = new Color(1f, 0.82f, 0.25f);
     private static readonly Color StaleColour = new Color(0.45f, 0.45f, 0.45f);
 
-    private readonly StatusIndicator _annular = new StatusIndicator();
-    private readonly StatusIndicator _pipeRam = new StatusIndicator();
-    private readonly StatusIndicator _blindRam = new StatusIndicator();
-    private readonly StatusIndicator _shearRam = new StatusIndicator();
-    private readonly StatusIndicator _killLine = new StatusIndicator();
-    private readonly StatusIndicator _chokeLine = new StatusIndicator();
-    private readonly StatusIndicator _masterValve = new StatusIndicator();
-
+    private MaterialPropertyBlock _block;
     private Quaternion _valveClosedRotation;
-    private float _valveAngle;
-    private float _valveTargetAngle;
+    private float _valveAngle, _valveTargetAngle;
 
     private void Awake()
     {
         if (connection == null) connection = FindObjectOfType<RigConnection>();
-
-        _annular.greenLight = annularGreenLight;       _annular.redLight = annularRedLight;
-        _pipeRam.greenLight = pipeRamGreenLight;       _pipeRam.redLight = pipeRamRedLight;
-        _blindRam.greenLight = blindRamGreenLight;     _blindRam.redLight = blindRamRedLight;
-        _shearRam.greenLight = shearRamGreenLight;     _shearRam.redLight = shearRamRedLight;
-        _killLine.greenLight = killLineGreenLight;     _killLine.redLight = killLineRedLight;
-        _chokeLine.greenLight = chokeLineGreenLight;   _chokeLine.redLight = chokeLineRedLight;
-        _masterValve.greenLight = masterValveGreenLight; _masterValve.redLight = masterValveRedLight;
-
+        _block = new MaterialPropertyBlock();
         if (masterValveObject != null)
             _valveClosedRotation = masterValveObject.transform.localRotation;
     }
@@ -106,12 +122,9 @@ public class BOPPanelController : MonoBehaviour
     private void OnEnable()
     {
         if (connection == null) return;
-        // Event-driven rather than polled. The previous version updated on every
-        // 30th frame to hide flicker caused by the receiver clearing its state
-        // dictionary on each message; that cause is gone, so updates can be
-        // immediate and exact.
         connection.State.Changed += OnStateChanged;
         connection.State.StaleChanged += OnStaleChanged;
+        connection.StatusChanged += OnStatusChanged;
         if (connection.State.HasData) OnStateChanged(connection.State.Snapshot);
     }
 
@@ -120,27 +133,52 @@ public class BOPPanelController : MonoBehaviour
         if (connection == null) return;
         connection.State.Changed -= OnStateChanged;
         connection.State.StaleChanged -= OnStaleChanged;
+        connection.StatusChanged -= OnStatusChanged;
+    }
+
+    /// <summary>
+    /// Checks every configured id against what the engine actually sends, once,
+    /// on connect. A component id with a typo is otherwise silent: the lamp
+    /// simply never changes, which on a panel reads as a blown bulb.
+    /// </summary>
+    private void OnStatusChanged(ConnectionStatus status, string detail)
+    {
+        if (status != ConnectionStatus.Connected || !validateOnConnect) return;
+        if (!connection.State.HasData) return;
+
+        var known = connection.State.Snapshot.Bop.Components;
+        foreach (var component in components)
+        {
+            foreach (var id in AllIds(component))
+            {
+                if (known != null && known.ContainsKey(id)) continue;
+                Debug.LogWarning(
+                    $"[BOPPanelController] '{component.label}' is bound to component id " +
+                    $"'{id}', which the engine does not send. Its lights will never " +
+                    "change. Check the id against docs/protocol.md.", this);
+            }
+        }
     }
 
     private void OnStateChanged(RigSnapshot snapshot)
     {
         var bop = snapshot.Bop;
 
-        _annular.Apply(bop.ComponentState("annular_1"));
-        _pipeRam.Apply(CombinedPipeRamState(bop));
+        foreach (var component in components)
+        {
+            var state = ResolveState(bop, component);
+            if (state == component.LastState) continue;
+            component.LastState = state;
+            ApplyLights(component, state);
+        }
 
-        // The data has one blind/shear ram and the panel has two indicator
-        // pairs, so both show the same value. They cannot disagree.
-        var blindShear = bop.ComponentState("blind_shear_ram");
-        _blindRam.Apply(blindShear);
-        _shearRam.Apply(blindShear);
-
-        _killLine.Apply(bop.ComponentState("kill_line"));
-        _chokeLine.Apply(bop.ComponentState("choke_line"));
-
-        var open = bop.MasterValve == "open";
-        _masterValve.SetBoolean(open);
-        _valveTargetAngle = open ? valveOpenAngle : 0f;
+        var masterState = bop.MasterValve;
+        if (masterState != masterValve.LastState)
+        {
+            masterValve.LastState = masterState;
+            ApplyLights(masterValve, masterState);
+        }
+        _valveTargetAngle = masterState == "open" ? valveOpenAngle : 0f;
 
         var stale = dimWhenStale && connection.State.IsStale;
         SetPressure(annularPressure3D, bop.PressuresPsi.Annular, annularLowPsi, stale);
@@ -154,23 +192,71 @@ public class BOPPanelController : MonoBehaviour
         if (connection.State.HasData) OnStateChanged(connection.State.Snapshot);
     }
 
-    /// <summary>
-    /// Three pipe rams share one indicator. Closed beats moving, which beats
-    /// open: the panel must never read "open" while any ram is shut or on its
-    /// way there.
-    /// </summary>
-    private static string CombinedPipeRamState(BopState bop)
+    private static IEnumerable<string> AllIds(ComponentLights component)
     {
-        var moving = false;
-        for (var i = 1; i <= 3; i++)
+        yield return component.componentId;
+        if (component.alsoCombine == null) yield break;
+        foreach (var id in component.alsoCombine)
+            if (!string.IsNullOrWhiteSpace(id)) yield return id;
+    }
+
+    /// <summary>
+    /// The state to display. Where one lamp covers several parts -- three pipe
+    /// rams, typically -- the worst state wins: closed beats moving beats open,
+    /// so the panel never reads "open" while any of them is shut or moving.
+    /// </summary>
+    private static string ResolveState(BopState bop, ComponentLights component)
+    {
+        string worst = null;
+        foreach (var id in AllIds(component))
         {
-            switch (bop.ComponentState($"pipe_ram_{i}"))
-            {
-                case "closed": return "closed";
-                case "moving": moving = true; break;
-            }
+            var state = bop.ComponentState(id);
+            if (state == "closed") return "closed";
+            if (state == "moving") { worst = "moving"; continue; }
+            if (worst == null) worst = state;
         }
-        return moving ? "moving" : "open";
+        return worst ?? "unknown";
+    }
+
+    /// <summary>
+    /// Lights the object assigned to this state and switches the others off, so
+    /// two lamps on the same part can never be lit at once unless the same
+    /// object is assigned twice deliberately.
+    /// </summary>
+    private void ApplyLights(ComponentLights component, string state)
+    {
+        if (component.lights == null) return;
+        foreach (var entry in component.lights)
+        {
+            if (entry?.light == null) continue;
+            var on = string.Equals(entry.state, state, StringComparison.OrdinalIgnoreCase);
+            SetLight(entry.light, on, entry.colour);
+        }
+    }
+
+    private void SetLight(GameObject light, bool on, Color colour)
+    {
+        if (light.activeSelf != on) light.SetActive(on);
+        if (!on) return;
+
+        var renderer = light.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            // Property block rather than renderer.material, which clones a
+            // material per renderer per call.
+            renderer.GetPropertyBlock(_block);
+            _block.SetColor("_BaseColor", colour);
+            _block.SetColor("_Color", colour);
+            _block.SetColor("_EmissionColor", colour * 2f);
+            renderer.SetPropertyBlock(_block);
+        }
+
+        var unityLight = light.GetComponent<Light>();
+        if (unityLight != null)
+        {
+            unityLight.color = colour;
+            unityLight.enabled = true;
+        }
     }
 
     private void SetPressure(TextMeshPro text, float psi, float lowThreshold, bool stale)
@@ -183,8 +269,6 @@ public class BOPPanelController : MonoBehaviour
     private void Update()
     {
         if (masterValveObject == null) return;
-        // Turn the wheel toward its target rather than snapping, so the motion
-        // reads as mechanical.
         _valveAngle = Mathf.Lerp(_valveAngle, _valveTargetAngle, Time.deltaTime * valveRotationSpeed);
         masterValveObject.transform.localRotation =
             _valveClosedRotation * Quaternion.AngleAxis(_valveAngle, rotationAxis);

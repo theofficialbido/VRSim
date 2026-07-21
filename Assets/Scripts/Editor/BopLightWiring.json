@@ -1,0 +1,23 @@
+{
+  "sceneGuid": "8dcf663e1ea7a844ebce77ad0d8b52f4",
+  "scenePath": "Assets/Scenes/Main Scene.unity",
+  "fields": {
+    "annularGreenLight": "1595925959",
+    "annularRedLight": "229332117",
+    "pipeRamGreenLight": "1000341562",
+    "pipeRamRedLight": "1217613473",
+    "blindRamGreenLight": "1304329100",
+    "blindRamRedLight": "343730078",
+    "shearRamGreenLight": "1059895142",
+    "shearRamRedLight": "2119082187",
+    "killLineGreenLight": "750679432",
+    "killLineRedLight": "1202967816",
+    "chokeLineGreenLight": "413780471",
+    "chokeLineRedLight": "196694863",
+    "masterValveObject": "2895422972198822395",
+    "annularPressure3D": "1654836023",
+    "manifoldPressure3D": "773003039",
+    "accumulatorPressure3D": "945147669",
+    "airPressure3D": "1392761882"
+  }
+}
