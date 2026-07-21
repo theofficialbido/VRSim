@@ -111,6 +111,10 @@ public class BOPPanelController : MonoBehaviour
     private Quaternion _valveClosedRotation;
     private float _valveAngle, _valveTargetAngle;
 
+    /// <summary>Objects that should be lit for the state being applied. Reused
+    /// to avoid allocating on every state change.</summary>
+    private readonly HashSet<GameObject> _lit = new HashSet<GameObject>();
+
     private void Awake()
     {
         if (connection == null) connection = FindObjectOfType<RigConnection>();
@@ -219,18 +223,38 @@ public class BOPPanelController : MonoBehaviour
     }
 
     /// <summary>
-    /// Lights the object assigned to this state and switches the others off, so
-    /// two lamps on the same part can never be lit at once unless the same
-    /// object is assigned twice deliberately.
+    /// Lights the object assigned to this state and switches the others off.
+    ///
+    /// The same object is routinely assigned to more than one state -- a green
+    /// lamp used for both "open" and "moving", differing only in colour. So the
+    /// objects to light are collected first, and only objects absent from that
+    /// set are switched off. Doing it per-entry instead means the "moving" entry
+    /// extinguishes the very lamp the "open" entry just lit, and the row goes
+    /// dark.
     /// </summary>
     private void ApplyLights(ComponentLights component, string state)
     {
         if (component.lights == null) return;
+
+        _lit.Clear();
         foreach (var entry in component.lights)
         {
             if (entry?.light == null) continue;
-            var on = string.Equals(entry.state, state, StringComparison.OrdinalIgnoreCase);
-            SetLight(entry.light, on, entry.colour);
+            if (string.Equals(entry.state, state, StringComparison.OrdinalIgnoreCase))
+                _lit.Add(entry.light);
+        }
+
+        foreach (var entry in component.lights)
+        {
+            if (entry?.light == null) continue;
+            if (!_lit.Contains(entry.light)) SetLight(entry.light, false, entry.colour);
+        }
+
+        foreach (var entry in component.lights)
+        {
+            if (entry?.light == null) continue;
+            if (string.Equals(entry.state, state, StringComparison.OrdinalIgnoreCase))
+                SetLight(entry.light, true, entry.colour);
         }
     }
 
