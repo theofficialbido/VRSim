@@ -63,22 +63,39 @@ async def send(ws, msg_type: str, payload: dict | None = None, seq: int = 1, v: 
     await ws.send(json.dumps(frame))
 
 
+async def drain_until_close(ws, timeout: float = 3.0) -> tuple[int | None, dict | None]:
+    """Read until the socket closes. Returns (close_code, last error payload).
+
+    The error payload is what matters: application close codes in the 4000-4999
+    range do not survive most client libraries, so an engine that only sets a
+    close code is not conformant. See docs/protocol.md section 3.
+    """
+    last_error = None
+    try:
+        while True:
+            raw = await asyncio.wait_for(ws.recv(), timeout=timeout)
+            msg = json.loads(raw)
+            if msg.get("type") == "error":
+                last_error = msg.get("payload")
+    except ConnectionClosed as exc:
+        return exc.code, last_error
+    except asyncio.TimeoutError:
+        return None, last_error
+
+
 async def test_version_rejection(url: str) -> None:
-    """Conformance 1: a mismatched v is closed with 4400, not tolerated."""
+    """Conformance 1: a mismatched v is refused, with an error message first."""
     try:
         async with websockets.connect(url) as ws:
             await send(ws, "hello", {"client": "conformance"}, v=99)
-            try:
-                while True:
-                    await asyncio.wait_for(ws.recv(), timeout=3.0)
-            except ConnectionClosed as exc:
-                check(exc.code == 4400, "rejects unsupported version with 4400",
-                      f"got close code {exc.code}")
-                return
-            except asyncio.TimeoutError:
-                check(False, "rejects unsupported version with 4400", "connection stayed open")
+            code, err = await drain_until_close(ws)
+            check(code == 4400, "rejects unsupported version with close 4400",
+                  f"got close code {code}")
+            check(err is not None and err.get("code") == "unsupported_version",
+                  "sends an error message before closing",
+                  repr(err.get("message")) if err else "no error message received")
     except Exception as exc:  # noqa: BLE001
-        check(False, "rejects unsupported version with 4400", repr(exc))
+        check(False, "rejects unsupported version", repr(exc))
 
 
 async def test_handshake_and_state(url: str) -> None:
@@ -177,21 +194,14 @@ async def test_single_controller(url: str) -> None:
         async with websockets.connect(url) as first:
             await send(first, "hello", {"client": "conformance-a"})
             await recv_typed(first, "state.snapshot", timeout=3.0)
-            try:
-                async with websockets.connect(url) as second:
-                    await send(second, "hello", {"client": "conformance-b"})
-                    try:
-                        while True:
-                            await asyncio.wait_for(second.recv(), timeout=3.0)
-                    except ConnectionClosed as exc:
-                        check(exc.code == 4409, "second client refused with 4409",
-                              f"got close code {exc.code}")
-                        return
-                    except asyncio.TimeoutError:
-                        check(False, "second client refused with 4409", "second client was served")
-            except ConnectionClosed as exc:
-                check(exc.code == 4409, "second client refused with 4409",
-                      f"got close code {exc.code}")
+            async with websockets.connect(url) as second:
+                await send(second, "hello", {"client": "conformance-b"})
+                code, err = await drain_until_close(second)
+                check(code == 4409, "second client refused with close 4409",
+                      f"got close code {code}")
+                check(err is not None and err.get("code") == "already_controlled",
+                      "refusal carries an already_controlled error",
+                      repr(err.get("message")) if err else "no error message received")
     except Exception as exc:  # noqa: BLE001
         check(False, "second client refused with 4409", repr(exc))
 
@@ -201,15 +211,11 @@ async def test_malformed(url: str) -> None:
     try:
         async with websockets.connect(url) as ws:
             await ws.send("this is not json")
-            try:
-                while True:
-                    await asyncio.wait_for(ws.recv(), timeout=3.0)
-            except ConnectionClosed as exc:
-                check(exc.code == 4401, "malformed frame closed with 4401",
-                      f"got close code {exc.code}")
-                return
-            except asyncio.TimeoutError:
-                check(False, "malformed frame closed with 4401", "connection stayed open")
+            code, err = await drain_until_close(ws)
+            check(code == 4401, "malformed frame closed with 4401", f"got close code {code}")
+            check(err is not None and err.get("code") == "malformed_message",
+                  "malformed frame carries a malformed_message error",
+                  repr(err.get("message")) if err else "no error message received")
     except Exception as exc:  # noqa: BLE001
         check(False, "malformed frame closed with 4401", repr(exc))
 

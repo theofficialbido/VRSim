@@ -103,7 +103,31 @@ It exists so the receiver can detect a gap; see §6.
 ### Version negotiation
 
 `v` is the **major** version. A receiver that sees a `v` it does not implement
-must close the connection with code `4400` and a reason naming both versions.
+must send an `error` (see below) and then close with code `4400`.
+
+### Errors must be sent as messages, not only as close codes
+
+**Before closing with any code other than 1000, the engine must first send an
+`error` message.** The close code alone is not sufficient.
+
+```jsonc
+{ "v":1, "type":"error", "seq":1, "ts":…,
+  "payload": {
+    "code": "unsupported_version",   // machine-readable, see the table in §6
+    "message": "engine speaks v1, client sent v99",
+    "close_code": 4400
+  } }
+```
+
+This is not belt-and-braces. Most WebSocket client libraries do not surface
+application close codes in the 4000–4999 range: Unity's NativeWebSocket maps
+every code outside 1000–1015 to a single `Undefined` value, so a client that
+depended on the close code could not tell "wrong protocol version" from
+"another headset has control" — two situations needing opposite responses, one
+"stop and tell the user", the other "wait and retry".
+
+Clients must therefore treat the last `error` payload received as the
+authoritative reason for a disconnect, and the close code as a hint.
 
 Adding an optional field is not a version bump. Removing a field, renaming one,
 or changing its meaning or units is.
@@ -331,32 +355,35 @@ gauge showing a plausible number is more dangerous than one that admits it has
 lost contact. When state is stale the client must visually mark every affected
 readout.
 
-### Close codes
+### Close codes and error codes
 
-| Code | Meaning |
-|---|---|
-| 1000 | Normal |
-| 4400 | Unsupported protocol version |
-| 4401 | Malformed message |
-| 4409 | Another client already holds control (see §7) |
-| 4500 | Internal engine error |
+Every non-normal close is preceded by an `error` message carrying the matching
+`code`. The client keys its behaviour off that `code`, because close codes in
+the 4000-4999 range do not survive most client libraries (see §3).
+
+| Close | `error.code` | Meaning | Client should |
+|---|---|---|---|
+| 1000 | — | Normal | Reconnect normally |
+| 4400 | `unsupported_version` | Protocol version mismatch | **Stop.** Show both versions. Do not retry — retrying just loops. |
+| 4401 | `malformed_message` | Unparseable frame | Stop and log; this is a client bug |
+| 4409 | `already_controlled` | Another client holds control (§7) | Retry slowly; show "another headset has control" |
+| 4500 | `internal_error` | Engine fault | Retry with backoff |
 
 ---
 
 ## 7. Control arbitration
 
-The engine currently also reads **physical USB joysticks** on the PC. If a
-hardware driller's chair remains in the training setup, two input sources exist
-and they can disagree.
+**VR is the only input.** There are no physical joysticks; the headset is the
+sole source of operator intent, so the engine has exactly one commanding client
+and no arbitration between input devices is needed.
 
-Until this is resolved (an open question in the revamp plan), v1 defines:
+What remains is arbitration between *headsets*:
 
-- The engine accepts commands from **at most one** VR client at a time. A second
-  client is closed with `4409`.
-- If hardware input is active, the engine advertises it in `hello.ack` as
-  `"hardware_input": true`, and the client displays that it is in observer mode
-  for the affected controls rather than appearing broken when a lever does
-  nothing.
+- The engine accepts commands from **at most one** client at a time. A second
+  client receives an `error` with code `already_controlled` and is closed
+  `4409`. Two people commanding one well is a safety problem, not a feature.
+- A refused client should retry slowly and say plainly that another headset has
+  control, rather than appearing broken.
 
 ---
 
@@ -379,7 +406,8 @@ between deltas** rather than snapping, so the tick rate is not visible.
 
 An implementation is conformant when it:
 
-1. Rejects a mismatched `v` with close code 4400 rather than proceeding.
+1. Sends an `error` carrying a machine-readable `code` before every non-normal
+   close, and rejects a mismatched `v` rather than proceeding.
 2. Sends `hello` first and, as an engine, follows `hello.ack` with a snapshot.
 3. Detects a `seq` gap and recovers via `resync` rather than applying the delta.
 4. Acks every command exactly once, with a human-readable `reason` on rejection.

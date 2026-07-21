@@ -32,6 +32,7 @@ from websockets.exceptions import ConnectionClosed
 PROTOCOL_VERSION = 1
 SNAPSHOT_INTERVAL_S = 30.0
 MAX_FRAME_BYTES = 256 * 1024
+DISCOVERY_PORT = 8769
 
 # Close codes -- see docs/protocol.md section 6.
 CLOSE_UNSUPPORTED_VERSION = 4400
@@ -72,6 +73,30 @@ CONTROLS_BY_ID = {c["id"]: c for c in CONTROLS}
 # Valves take time to travel; a ram does not slam shut. The client must render
 # "moving" rather than assuming a command completes instantly.
 VALVE_TRAVEL_S = 2.5
+
+
+async def close_with_error(ws, close_code: int, error_code: str, message: str) -> None:
+    """Send an `error` frame, then close.
+
+    The close code alone is not enough: most WebSocket clients do not surface
+    application close codes in the 4000-4999 range. Unity's NativeWebSocket
+    collapses every code outside 1000-1015 to a single `Undefined` value, so a
+    client relying on it could not distinguish "wrong protocol version" (stop,
+    tell the user) from "another headset has control" (wait and retry).
+    See docs/protocol.md section 3.
+    """
+    frame = {
+        "v": PROTOCOL_VERSION,
+        "type": "error",
+        "seq": 0,
+        "ts": round(time.time(), 3),
+        "payload": {"code": error_code, "message": message, "close_code": close_code},
+    }
+    try:
+        await ws.send(json.dumps(frame, separators=(",", ":")))
+    except ConnectionClosed:
+        pass
+    await ws.close(close_code, message[:120])
 
 
 def _merge_patch_diff(old: Any, new: Any) -> Any:
@@ -386,7 +411,8 @@ async def handle_client(ws, model: RigModel, tick_hz: float, holder: dict) -> No
     peer = getattr(ws, "remote_address", ("?", 0))
     if holder.get("session") is not None:
         log.warning("rejecting %s: another client holds control", peer)
-        await ws.close(CLOSE_ALREADY_CONTROLLED, "another client already holds control")
+        await close_with_error(ws, CLOSE_ALREADY_CONTROLLED, "already_controlled",
+                               "another client already holds control")
         return
 
     session = Session(ws, model, tick_hz)
@@ -397,20 +423,22 @@ async def handle_client(ws, model: RigModel, tick_hz: float, holder: dict) -> No
     try:
         async for raw in ws:
             if len(raw) > MAX_FRAME_BYTES:
-                await ws.close(CLOSE_MALFORMED, "frame too large")
+                await close_with_error(ws, CLOSE_MALFORMED, "malformed_message",
+                                       "frame too large")
                 return
             try:
                 msg = json.loads(raw)
                 if not isinstance(msg, dict):
                     raise ValueError("not an object")
             except (json.JSONDecodeError, ValueError) as exc:
-                await ws.close(CLOSE_MALFORMED, f"malformed message: {exc}")
+                await close_with_error(ws, CLOSE_MALFORMED, "malformed_message",
+                                       f"malformed message: {exc}")
                 return
 
             version = msg.get("v")
             if version != PROTOCOL_VERSION:
-                await ws.close(
-                    CLOSE_UNSUPPORTED_VERSION,
+                await close_with_error(
+                    ws, CLOSE_UNSUPPORTED_VERSION, "unsupported_version",
                     f"engine speaks v{PROTOCOL_VERSION}, client sent v{version}",
                 )
                 return
@@ -434,7 +462,6 @@ async def _dispatch(session: Session, model: RigModel, msg: dict, tick_hz: float
             {
                 "engine_version": "mock-1.0",
                 "tick_hz": tick_hz,
-                "hardware_input": False,
                 "controls": CONTROLS,
             },
         )
@@ -444,7 +471,8 @@ async def _dispatch(session: Session, model: RigModel, msg: dict, tick_hz: float
         return
 
     if not session.hello_done:
-        await session.ws.close(CLOSE_MALFORMED, "hello must be the first message")
+        await close_with_error(session.ws, CLOSE_MALFORMED, "malformed_message",
+                               "hello must be the first message")
         return
 
     if msg_type == "ping":
@@ -523,19 +551,90 @@ async def _pump(session: Session, model: RigModel, tick_hz: float) -> None:
         pass
 
 
-async def main_async(host: str, port: int, tick_hz: float) -> None:
+class DiscoveryResponder(asyncio.DatagramProtocol):
+    """Answers the headset's UDP broadcast so nobody types an IP in VR.
+
+    In the full system this lives in the agent, which is always running and
+    therefore always discoverable. The mock carries it too so a headset can
+    find the mock engine on its own during bring-up.
+    """
+
+    def __init__(self, engine_port: int) -> None:
+        self.engine_port = engine_port
+        self.transport = None
+
+    def connection_made(self, transport) -> None:
+        self.transport = transport
+
+    def datagram_received(self, data: bytes, addr) -> None:
+        try:
+            msg = json.loads(data.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return
+        if msg.get("type") != "discover":
+            return
+
+        import socket as _socket
+        reply = {
+            "v": PROTOCOL_VERSION,
+            "type": "discover.reply",
+            "host": _socket.gethostname(),
+            "agent_port": 8770,
+            "engine_port": self.engine_port,
+            "engine_running": True,
+            "protocol": [PROTOCOL_VERSION],
+        }
+        log.info("discovery request from %s -- replying", addr[0])
+        self.transport.sendto(json.dumps(reply).encode("utf-8"), addr)
+
+
+async def main_async(host: str, port: int, tick_hz: float, discovery: bool) -> None:
     model = RigModel()
     holder: dict = {"session": None}
 
     async def handler(ws, *_):  # tolerate websockets<14 passing a path argument
         await handle_client(ws, model, tick_hz, holder)
 
-    async with websockets.serve(handler, host, port, max_size=MAX_FRAME_BYTES):
-        log.info("mock engine (protocol v%d) listening on ws://%s:%d at %g Hz",
-                 PROTOCOL_VERSION, host, port, tick_hz)
-        log.info("bound to %s -- reachable from the LAN" if host == "0.0.0.0"
-                 else "bound to %s -- local only", host)
-        await asyncio.Future()
+    transport = None
+    if discovery:
+        try:
+            loop = asyncio.get_running_loop()
+            transport, _ = await loop.create_datagram_endpoint(
+                lambda: DiscoveryResponder(port),
+                local_addr=("0.0.0.0", DISCOVERY_PORT),
+                allow_broadcast=True,
+            )
+            log.info("discovery responder listening on udp/%d", DISCOVERY_PORT)
+        except OSError as exc:
+            log.warning("discovery unavailable (%s) -- set the address manually in Unity", exc)
+
+    try:
+        async with websockets.serve(handler, host, port, max_size=MAX_FRAME_BYTES):
+            log.info("mock engine (protocol v%d) listening on ws://%s:%d at %g Hz",
+                     PROTOCOL_VERSION, host, port, tick_hz)
+            if host == "0.0.0.0":
+                for addr in _local_addresses():
+                    log.info("  reachable from the LAN at ws://%s:%d", addr, port)
+            else:
+                log.warning("bound to %s -- NOT reachable from a headset", host)
+            await asyncio.Future()
+    finally:
+        if transport is not None:
+            transport.close()
+
+
+def _local_addresses() -> list[str]:
+    """Best-effort list of this machine's LAN addresses, to save an ipconfig."""
+    import socket as _socket
+    found = []
+    try:
+        for info in _socket.getaddrinfo(_socket.gethostname(), None, _socket.AF_INET):
+            addr = info[4][0]
+            if not addr.startswith("127.") and addr not in found:
+                found.append(addr)
+    except OSError:
+        pass
+    return found or ["<run ipconfig>"]
 
 
 def main() -> None:
@@ -543,6 +642,8 @@ def main() -> None:
     parser.add_argument("--host", default="0.0.0.0", help="bind address (default: all interfaces)")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--tick-hz", type=float, default=20.0)
+    parser.add_argument("--no-discovery", action="store_true",
+                        help="do not answer UDP discovery broadcasts")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -552,7 +653,7 @@ def main() -> None:
         datefmt="%H:%M:%S",
     )
     try:
-        asyncio.run(main_async(args.host, args.port, args.tick_hz))
+        asyncio.run(main_async(args.host, args.port, args.tick_hz, not args.no_discovery))
     except KeyboardInterrupt:
         log.info("stopped")
 
