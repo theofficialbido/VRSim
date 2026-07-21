@@ -189,6 +189,19 @@ MonoBehaviour:
   KHR_materials_pbrSpecularGlossiness: 1
   KHR_materials_emissive_strength: 1
   KHR_materials_anisotropy: 1
+--- !u!114 &-734526688455474487
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de1f726221454139bfcce49d994d9d05, type: 3}
+  m_Name: ExrImport
+  m_EditorClassIdentifier: UnityGLTFScripts::UnityGLTF.Plugins.ExrImport
+  enabled: 1
 --- !u!114 &-510767977332442024
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -244,6 +257,8 @@ MonoBehaviour:
   - {fileID: 601810971118148675}
   - {fileID: -3323434805539941607}
   - {fileID: -6449365336693186958}
+  - {fileID: 3887553446552986530}
+  - {fileID: -734526688455474487}
   ExportPlugins:
   - {fileID: 9026094290885780803}
   - {fileID: 8892698682012748582}
@@ -327,6 +342,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 60bb1ecd8af04e0e864c773a2aaf6263, type: 3}
   m_Name: TextureTransformImport
   m_EditorClassIdentifier: 
+  enabled: 1
+--- !u!114 &3887553446552986530
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5d73111d7b6493da937accca1adfe6a, type: 3}
+  m_Name: WebpImport
+  m_EditorClassIdentifier: UnityGLTFScripts::UnityGLTF.Plugins.WebpImport
   enabled: 1
 --- !u!114 &5017172484305047462
 MonoBehaviour:

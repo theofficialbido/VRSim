@@ -1,29 +1,29 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.XR.Interaction.Toolkit;
+
 
 public class TeleportMudDownC : MonoBehaviour
 {[Tooltip("The anchor the player is teleported to")]
-    public TeleportationAnchor anchor = null;
+    public UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationAnchor anchor = null;
 
     [Tooltip("The provider used to request the teleportation")]
-    public TeleportationProvider provider = null;
+    public UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationProvider provider = null;
 
     public void Teleport()
     {
         if(anchor && provider)
         {
-            TeleportRequest request = CreateRequest();
+            UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportRequest request = CreateRequest();
             provider.QueueTeleportRequest(request);
         }
     }
 
-    private TeleportRequest CreateRequest()
+    private UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportRequest CreateRequest()
     {
         Transform anchorTransform = anchor.teleportAnchorTransform;
 
-        TeleportRequest request = new TeleportRequest()
+        UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportRequest request = new UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportRequest()
         {
             requestTime = Time.time,
             matchOrientation = anchor.matchOrientation,

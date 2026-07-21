@@ -20,7 +20,8 @@
       "Bash(python -)",
       "Bash(python -c \"import json;d=json.load\\(open\\(r'Packages/manifest.json'\\)\\);print\\('OK ->', d['dependencies']['org.khronos.unitygltf']\\)\")",
       "Bash(python -c \"import json;d=json.load\\(open\\(r'Packages/packages-lock.json'\\)\\);print\\('OK, unitygltf present:', 'org.khronos.unitygltf' in d['dependencies']\\)\")",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(tasklist)"
     ]
   }
 }

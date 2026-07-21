@@ -1,16 +1,16 @@
 using UnityEngine;
-using UnityEngine.XR.Interaction.Toolkit;
+
 
 public class SitOnChair : MonoBehaviour
 {
-    public TeleportationAnchor anchor;
-    public TeleportationProvider provider;
+    public UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationAnchor anchor;
+    public UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationProvider provider;
 
     public void Sit()
     {
         if (anchor && provider)
         {
-            TeleportRequest request = new TeleportRequest
+            UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportRequest request = new UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportRequest
             {
                 requestTime = Time.time,
                 matchOrientation = anchor.matchOrientation,

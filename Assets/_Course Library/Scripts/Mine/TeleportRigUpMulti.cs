@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.XR.Interaction.Toolkit;
+
 using System.Collections.Generic;
 
 public class TeleportRigUpMulti : MonoBehaviour
@@ -8,7 +8,7 @@ public class TeleportRigUpMulti : MonoBehaviour
     public class ButtonTeleportPair
     {
         public string buttonName;
-        public TeleportationAnchor anchor;
+        public UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationAnchor anchor;
     }
 
     [Header("Teleport Anchors mapped by button name")]
@@ -17,7 +17,7 @@ public class TeleportRigUpMulti : MonoBehaviour
 
     [Header("Teleportation Provider")]
     [SerializeField]
-    private TeleportationProvider provider;
+    private UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationProvider provider;
 
     public void TeleportTo(string buttonName)
     {
@@ -25,7 +25,7 @@ public class TeleportRigUpMulti : MonoBehaviour
         {
             if (pair.buttonName == buttonName && pair.anchor != null && pair.anchor.teleportAnchorTransform != null)
             {
-                TeleportRequest request = new TeleportRequest()
+                UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportRequest request = new UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportRequest()
                 {
                     requestTime = Time.time,
                     matchOrientation = pair.anchor.matchOrientation,
