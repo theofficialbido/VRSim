@@ -107,6 +107,73 @@ Editor Play session still holding the socket will lock out the headset. Stop it.
 
 ---
 
+## Testing VR → engine
+
+The panel's self-test proves the reverse direction automatically, but it does it
+on a timer. To drive it yourself, the scene has four buttons on a stand in front
+of you. **Touch one with a controller** to press it.
+
+They activate by proximity rather than by trigger, deliberately: that needs no
+interactor or input-action configuration, so if a press does nothing you know
+it is the network and not a binding. The real control library will use XRI
+interactables properly.
+
+| Button | Sends | Watch |
+|---|---|---|
+| `console.pump_1` | `on` / `off` | Pump dot lights, flow climbs |
+| `console.pump_2` | `on` / `off` | Second dot, more flow |
+| `console.auto_drill` | `on` / `off` | WOB rises, bit depth starts advancing |
+| `bop.annular_1` | `closed` / `open` | **Stays amber ~2.5 s**, then greens |
+
+### What the colours mean
+
+| Colour | Meaning |
+|---|---|
+| Grey | Idle |
+| **Amber** | Command sent, waiting — includes "accepted but not done yet" |
+| **Green** | Rig state actually reports the value you asked for |
+| **Red** | Rejected, or state never changed |
+
+The button turns green **only when state comes back showing the change** — not
+when the ack arrives. That distinction is the whole point. An ack means the
+engine took the command; it does not mean the world changed.
+
+The annular button demonstrates this best. Press it and the sequence is:
+
+```
+press      -> amber, "sent closed"
+~instantly -> amber, "accepted, awaiting state"
+~instantly -> amber, "engine says moving…"
+after 2.5s -> green, "confirmed in 2530 ms"
+```
+
+A client that treated the ack as success would have shown that ram closed for
+two and a half seconds before it actually was. On a well-control trainer that is
+the difference between a correct display and a dangerous one.
+
+The label also reports the measured round-trip in milliseconds, which is a
+useful read on your Wi-Fi.
+
+### Watching from the PC
+
+The mock engine logs every command as it arrives:
+
+```
+13:41:07  INFO    command c-4f2a91b0 bop.annular_1=closed -> accepted
+13:41:12  INFO    command c-88de1a34 console.pump_1=on -> accepted
+```
+
+Run it with `--verbose` for more. If lines appear here, the headset is reaching
+the engine — so anything still wrong is on the return path.
+
+### Testing a rejection
+
+Press `bop.annular_1` while the master valve is closed and the engine refuses
+it. The button goes red and shows `master valve closed` — the engine's own
+words, surfaced in the headset rather than swallowed into a log.
+
+---
+
 ## Exercising the failure paths
 
 Worth doing once, because these are the behaviours that matter in a real session

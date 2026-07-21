@@ -1,12 +1,13 @@
 using System.IO;
+using TMPro;
 using Unity.XR.CoreUtils;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.XR;
-using UnityEngine.SceneManagement;
 using VRSIM.Diagnostics;
+using VRSIM.Interaction;
 using VRSIM.Net;
 
 namespace VRSIM.EditorTools
@@ -79,6 +80,11 @@ namespace VRSIM.EditorTools
             origin.CameraFloorOffsetObject = offset;
             origin.RequestedTrackingOriginMode = XROrigin.TrackingOriginMode.Floor;
 
+            // -- tracked controllers. Needed so there is something to press
+            //    with; without them the scene can only be looked at.
+            var leftTip = BuildController(offset.transform, "Left Controller", "LeftHand");
+            var rightTip = BuildController(offset.transform, "Right Controller", "RightHand");
+
             // -- the thing under test.
             var linkGo = new GameObject("Engine Link");
             var connection = linkGo.AddComponent<RigConnection>();
@@ -87,7 +93,26 @@ namespace VRSIM.EditorTools
             connection.verboseLogging = true;
             connection.host = GuessLocalSubnetHint();
 
-            linkGo.AddComponent<ConnectionHud>();
+            // The automatic self-test drives pump 3, which has no button, so it
+            // cannot fight the manual buttons for the same control.
+            var hud = linkGo.AddComponent<ConnectionHud>();
+            hud.selfTestControl = "console.pump_3";
+
+            // -- command buttons, to test the VR -> engine direction.
+            var panel = new GameObject("Command Buttons").transform;
+            panel.position = new Vector3(0f, 1.0f, 0.55f);
+
+            BuildButton(panel, connection, leftTip, rightTip, -0.30f,
+                "console.pump_1", "pumps.pump_1.active", "on", "off", "True", "False");
+            BuildButton(panel, connection, leftTip, rightTip, -0.10f,
+                "console.pump_2", "pumps.pump_2.active", "on", "off", "True", "False");
+            BuildButton(panel, connection, leftTip, rightTip, 0.10f,
+                "console.auto_drill", "drilling.auto_drill", "on", "off", "True", "False");
+            // The annular is the interesting one: it reports "moving" for 2.5s
+            // before it closes, so the button visibly stays amber after the ack
+            // and only greens when state catches up.
+            BuildButton(panel, connection, leftTip, rightTip, 0.30f,
+                "bop.annular_1", "bop.components.annular_1", "closed", "open", "closed", "open");
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath) ?? "Assets/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -106,6 +131,73 @@ namespace VRSIM.EditorTools
 
             Selection.activeGameObject = linkGo;
             Debug.Log($"[VRSIM] Built {ScenePath}. Engine Link host hint: {connection.host}");
+        }
+
+        /// <summary>
+        /// A tracked controller with a visible tip. Returns the tip transform,
+        /// which is what presses buttons.
+        /// </summary>
+        private static Transform BuildController(Transform parent, string name, string hand)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+
+            var driver = go.AddComponent<TrackedPoseDriver>();
+            driver.trackingType = TrackedPoseDriver.TrackingType.RotationAndPosition;
+            driver.positionInput = new InputActionProperty(
+                new InputAction($"{name} Position", binding: $"<XRController>{{{hand}}}/devicePosition",
+                                expectedControlType: "Vector3"));
+            driver.rotationInput = new InputActionProperty(
+                new InputAction($"{name} Rotation", binding: $"<XRController>{{{hand}}}/deviceRotation",
+                                expectedControlType: "Quaternion"));
+
+            // A small sphere so the controller is visible, and slightly ahead of
+            // the grip so it reads as a fingertip rather than a fist.
+            var tip = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            tip.name = "Tip";
+            tip.transform.SetParent(go.transform, false);
+            tip.transform.localPosition = new Vector3(0f, 0f, 0.045f);
+            tip.transform.localScale = Vector3.one * 0.028f;
+            Object.DestroyImmediate(tip.GetComponent<Collider>()); // proximity is by distance, not physics
+
+            return tip.transform;
+        }
+
+        private static void BuildButton(Transform parent, RigConnection connection,
+                                        Transform leftTip, Transform rightTip, float x,
+                                        string controlId, string statePath,
+                                        string onCommand, string offCommand,
+                                        string onState, string offState)
+        {
+            var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            body.name = $"Button {controlId}";
+            body.transform.SetParent(parent, false);
+            body.transform.localPosition = new Vector3(x, 0f, 0f);
+            body.transform.localScale = new Vector3(0.13f, 0.05f, 0.09f);
+            Object.DestroyImmediate(body.GetComponent<Collider>());
+
+            var labelGo = new GameObject("Label");
+            labelGo.transform.SetParent(body.transform, false);
+            // The parent cube is non-uniformly scaled, so undo it or the text shears.
+            labelGo.transform.localScale = new Vector3(1f / 0.13f, 1f / 0.05f, 1f / 0.09f) * 0.01f;
+            labelGo.transform.localPosition = new Vector3(0f, 1.4f, 0f);
+
+            var label = labelGo.AddComponent<TextMeshPro>();
+            label.fontSize = 3.2f;
+            label.alignment = TextAlignmentOptions.Center;
+            label.text = controlId;
+            label.rectTransform.sizeDelta = new Vector2(18f, 6f);
+
+            var button = body.AddComponent<RigCommandButton>();
+            button.connection = connection;
+            button.controlId = controlId;
+            button.statePath = statePath;
+            button.onCommandValue = onCommand;
+            button.offCommandValue = offCommand;
+            button.onStateValue = onState;
+            button.offStateValue = offState;
+            button.label = label;
+            button.activators = new System.Collections.Generic.List<Transform> { leftTip, rightTip };
         }
 
         /// <summary>
