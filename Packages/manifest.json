@@ -16,7 +16,7 @@
     "com.unity.xr.management": "4.6.0",
     "com.unity.xr.oculus": "4.5.4",
     "com.unity.xr.openxr": "1.17.1",
-    "org.khronos.unitygltf": "https://github.com/KhronosGroup/UnityGLTF.git",
+    "org.khronos.unitygltf": "https://github.com/KhronosGroup/UnityGLTF.git#release/2.19.5",
     "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.adaptiveperformance": "1.0.0",
     "com.unity.modules.ai": "1.0.0",

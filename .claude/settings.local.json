@@ -12,7 +12,15 @@
       "Bash(gh auth *)",
       "Bash(cat)",
       "Bash(python /tmp/reach.py)",
-      "Bash(u=\"C:/Users/Abdul/AppData/Local/Temp/claude/unreachable.txt\"; echo \"=== .asset ===\"; grep -i \"\\\\.asset$\" \"$u\" | sed 's|.*/Assets/|Assets/|'; echo; echo \"=== .inputactions / .pdf / .md / .txt ===\"; grep -iE \"\\\\.\\(inputactions|pdf|md|txt\\)$\" \"$u\" | sed 's|.*/Assets/|Assets/|'; echo; echo \"=== .jpg ===\"; grep -i \"\\\\.jpg$\" \"$u\" | sed 's|.*/Assets/|Assets/|' | head -25)"
+      "Bash(u=\"C:/Users/Abdul/AppData/Local/Temp/claude/unreachable.txt\"; echo \"=== .asset ===\"; grep -i \"\\\\.asset$\" \"$u\" | sed 's|.*/Assets/|Assets/|'; echo; echo \"=== .inputactions / .pdf / .md / .txt ===\"; grep -iE \"\\\\.\\(inputactions|pdf|md|txt\\)$\" \"$u\" | sed 's|.*/Assets/|Assets/|'; echo; echo \"=== .jpg ===\"; grep -i \"\\\\.jpg$\" \"$u\" | sed 's|.*/Assets/|Assets/|' | head -25)",
+      "Bash(git commit -q -m '@ *)",
+      "Bash(git commit *)",
+      "Bash(grep -vE \"^\\\\.$|^\\\\.\\\\.$\")",
+      "WebFetch(domain:docs.unity3d.com)",
+      "Bash(python -)",
+      "Bash(python -c \"import json;d=json.load\\(open\\(r'Packages/manifest.json'\\)\\);print\\('OK ->', d['dependencies']['org.khronos.unitygltf']\\)\")",
+      "Bash(python -c \"import json;d=json.load\\(open\\(r'Packages/packages-lock.json'\\)\\);print\\('OK, unitygltf present:', 'org.khronos.unitygltf' in d['dependencies']\\)\")",
+      "Bash(git add *)"
     ]
   }
 }
