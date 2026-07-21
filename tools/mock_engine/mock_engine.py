@@ -69,6 +69,8 @@ CONTROLS: list[dict[str, Any]] = [
     # Diagnostic only: exists so a human in a headset can press something
     # and see unmistakable proof on the PC that it arrived.
     {"id": "diag.test_button", "kind": "button", "states": ["press"]},
+    {"id": "swaco.hold", "kind": "switch", "states": ["on", "off"]},
+    {"id": "swaco.reset", "kind": "button", "states": ["press"]},
 ]
 
 CONTROLS_BY_ID = {c["id"]: c for c in CONTROLS}
@@ -191,6 +193,8 @@ class RigModel:
                 "choke_position": 0.35,
                 "total_strokes": 0.0,
                 "total_volume_bbl": 0.0,
+                "hold_active": False,
+                "reset_active": False,
             },
             "alarms": [],
             "diag": {"button_presses": 0, "last_press_source": ""},
@@ -241,6 +245,17 @@ class RigModel:
             return True, None
         if control == "console.emergency_stop":
             self._trigger_emergency()
+            return True, None
+        if control == "swaco.hold":
+            self.state["swaco"]["hold_active"] = value == "on"
+            return True, None
+        if control == "swaco.reset":
+            # Momentary: latches briefly so the lamp is visibly driven,
+            # then clears on the next tick.
+            self.state["swaco"]["reset_active"] = True
+            self.state["swaco"]["total_strokes"] = 0.0
+            self.state["swaco"]["total_volume_bbl"] = 0.0
+            self._reset_clear_at = time.monotonic() + 0.75
             return True, None
         if control == "swaco.choke":
             self.state["swaco"]["choke_position"] = value
@@ -306,6 +321,10 @@ class RigModel:
             if now >= done_at:
                 self.state["bop"]["components"][name] = target
                 del self._valves_moving[name]
+
+        if getattr(self, "_reset_clear_at", 0) and now >= self._reset_clear_at:
+            self.state["swaco"]["reset_active"] = False
+            self._reset_clear_at = 0
 
         target_rpm = 0.0 if self.emergency else self.rpm_setpoint
         d["rpm"] += (target_rpm - d["rpm"]) * min(1.0, dt * 2.0)

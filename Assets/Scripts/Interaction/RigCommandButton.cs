@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using TMPro;
 using UnityEngine;
+using VRSIM.Binding;
 using VRSIM.Net;
 
 namespace VRSIM.Interaction
@@ -23,7 +24,7 @@ namespace VRSIM.Interaction
     /// and not a misconfigured binding. The real control library will use XRI
     /// interactables properly.
     /// </summary>
-    public class RigCommandButton : MonoBehaviour
+    public class RigCommandButton : MonoBehaviour, IRigPressable
     {
         public enum ButtonKind
         {
@@ -117,6 +118,9 @@ namespace VRSIM.Interaction
                 return;
             }
         }
+
+        /// <summary>What a pointer shows when aimed at this button.</summary>
+        public string PressableLabel => controlId + "\n" + _status;
 
         /// <summary>Sends the command. Public so it can also be driven from a UI or a test.</summary>
         public void Press()
