@@ -21,7 +21,8 @@
       "Bash(python -c \"import json;d=json.load\\(open\\(r'Packages/manifest.json'\\)\\);print\\('OK ->', d['dependencies']['org.khronos.unitygltf']\\)\")",
       "Bash(python -c \"import json;d=json.load\\(open\\(r'Packages/packages-lock.json'\\)\\);print\\('OK, unitygltf present:', 'org.khronos.unitygltf' in d['dependencies']\\)\")",
       "Bash(git add *)",
-      "Bash(tasklist)"
+      "Bash(tasklist)",
+      "Bash(cd /c/Users/Abdul/Work/Pansim && find . -name \"*.py\" -not -path \"*/node_modules/*\" -not -path \"*/.git/*\" -not -path \"*/venv/*\" -not -path \"*/.venv/*\" | head -200)"
     ]
   }
 }

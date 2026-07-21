@@ -1,0 +1,561 @@
+"""
+VRSIM mock engine -- reference implementation of protocol v1.
+
+See docs/protocol.md. That document is the contract; this file implements it.
+Where they disagree, the document is right.
+
+Purpose: let the Unity client be developed and tested end-to-end without the
+real drilling engine. It serves plausible, self-consistent drilling state,
+accepts commands, and exercises every failure path the client must handle.
+
+    python mock_engine.py [--host 0.0.0.0] [--port 8765] [--tick-hz 20]
+
+Bind to 0.0.0.0 (the default) so a Quest headset on the LAN can reach it;
+127.0.0.1 is only reachable from this machine.
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import copy
+import json
+import logging
+import math
+import random
+import time
+from typing import Any
+
+import websockets
+from websockets.exceptions import ConnectionClosed
+
+PROTOCOL_VERSION = 1
+SNAPSHOT_INTERVAL_S = 30.0
+MAX_FRAME_BYTES = 256 * 1024
+
+# Close codes -- see docs/protocol.md section 6.
+CLOSE_UNSUPPORTED_VERSION = 4400
+CLOSE_MALFORMED = 4401
+CLOSE_ALREADY_CONTROLLED = 4409
+CLOSE_INTERNAL = 4500
+
+log = logging.getLogger("mock_engine")
+
+
+# ---------------------------------------------------------------------------
+# Controllable surface, advertised in hello.ack so the client can validate its
+# bindings at startup instead of discovering a mismatch mid-session.
+# ---------------------------------------------------------------------------
+
+CONTROLS: list[dict[str, Any]] = [
+    {"id": "bop.annular_1", "kind": "valve", "states": ["open", "closed"]},
+    {"id": "bop.pipe_ram_1", "kind": "valve", "states": ["open", "closed"]},
+    {"id": "bop.pipe_ram_2", "kind": "valve", "states": ["open", "closed"]},
+    {"id": "bop.pipe_ram_3", "kind": "valve", "states": ["open", "closed"]},
+    {"id": "bop.blind_shear_ram", "kind": "valve", "states": ["open", "closed"]},
+    {"id": "bop.kill_line", "kind": "valve", "states": ["open", "closed"]},
+    {"id": "bop.choke_line", "kind": "valve", "states": ["open", "closed"]},
+    {"id": "bop.master_valve", "kind": "valve", "states": ["open", "closed"]},
+    {"id": "console.pump_1", "kind": "switch", "states": ["on", "off"]},
+    {"id": "console.pump_2", "kind": "switch", "states": ["on", "off"]},
+    {"id": "console.pump_3", "kind": "switch", "states": ["on", "off"]},
+    {"id": "console.auto_drill", "kind": "switch", "states": ["on", "off"]},
+    {"id": "console.emergency_stop", "kind": "button", "states": ["press"]},
+    {"id": "swaco.choke", "kind": "analog", "min": 0.0, "max": 1.0},
+    {"id": "tds.throttle", "kind": "axis", "min": -1.0, "max": 1.0},
+    {"id": "tds.rpm_setpoint", "kind": "analog", "min": 0.0, "max": 250.0},
+    {"id": "tds.wob_setpoint", "kind": "analog", "min": 0.0, "max": 60.0},
+]
+
+CONTROLS_BY_ID = {c["id"]: c for c in CONTROLS}
+
+# Valves take time to travel; a ram does not slam shut. The client must render
+# "moving" rather than assuming a command completes instantly.
+VALVE_TRAVEL_S = 2.5
+
+
+def _merge_patch_diff(old: Any, new: Any) -> Any:
+    """RFC 7386 merge patch taking `old` to `new`.
+
+    Returns a sentinel-free dict of only what changed. Keys removed in `new`
+    become explicit nulls, which is what makes the patch reversible on the
+    client without it needing to know the full schema.
+    """
+    if not isinstance(old, dict) or not isinstance(new, dict):
+        return copy.deepcopy(new)
+
+    patch: dict[str, Any] = {}
+    for key, new_val in new.items():
+        if key not in old:
+            patch[key] = copy.deepcopy(new_val)
+        elif isinstance(new_val, dict) and isinstance(old[key], dict):
+            sub = _merge_patch_diff(old[key], new_val)
+            if sub:
+                patch[key] = sub
+        elif old[key] != new_val:
+            patch[key] = copy.deepcopy(new_val)
+
+    for key in old:
+        if key not in new:
+            patch[key] = None
+    return patch
+
+
+class RigModel:
+    """Plausible, self-consistent drilling state.
+
+    Not a physics engine -- deliberately. Its job is to give the VR client
+    something that moves believably and responds to commands, so that display
+    and interaction code can be built and judged before the real engine exists.
+    """
+
+    def __init__(self) -> None:
+        self.t0 = time.monotonic()
+        self.rpm_setpoint = 120.0
+        self.wob_setpoint = 25.0
+        self.throttle = 0.0
+        self.auto_drill = False
+        self.emergency = False
+
+        # Valves in transit: id -> (target_state, completes_at_monotonic)
+        self._valves_moving: dict[str, tuple[str, float]] = {}
+
+        self.state: dict[str, Any] = {
+            "drilling": {
+                "bit_depth_ft": 10432.5,
+                "hole_depth_ft": 10440.0,
+                "rop_fph": 0.0,
+                "wob_klbs": 0.0,
+                "hookload_klbs": 200.0,
+                "torque_ftlb": 0.0,
+                "rpm": 0.0,
+                "tds_position_ft": 85.0,
+                "tds_movement": "stop",
+                "auto_drill": False,
+            },
+            "pumps": {
+                "pump_1": {"active": False, "spm": 0.0, "pressure_psi": 0.0},
+                "pump_2": {"active": False, "spm": 0.0, "pressure_psi": 0.0},
+                "pump_3": {"active": False, "spm": 0.0, "pressure_psi": 0.0},
+                "total_flow_gpm": 0.0,
+            },
+            "bop": {
+                "components": {
+                    "annular_1": "open",
+                    "pipe_ram_1": "open",
+                    "pipe_ram_2": "open",
+                    "pipe_ram_3": "open",
+                    "blind_shear_ram": "closed",
+                    "kill_line": "closed",
+                    "choke_line": "open",
+                },
+                "pressures_psi": {
+                    "annular": 1500.0,
+                    "manifold": 1529.0,
+                    "accumulator": 3000.0,
+                    "air": 125.0,
+                },
+                "master_valve": "open",
+            },
+            "swaco": {
+                "standpipe_psi": 0.0,
+                "casing_psi": 400.0,
+                "choke_position": 0.35,
+                "total_strokes": 0.0,
+                "total_volume_bbl": 0.0,
+            },
+            "alarms": [],
+        }
+
+    # -- command handling ---------------------------------------------------
+
+    def apply_command(self, control: str, action: str, value: Any) -> tuple[bool, str | None]:
+        """Returns (accepted, reason_if_rejected).
+
+        Rejection reasons are written to be read by a person in a headset who
+        is holding the lever that just did nothing.
+        """
+        spec = CONTROLS_BY_ID.get(control)
+        if spec is None:
+            return False, f"unknown control '{control}'"
+
+        if self.emergency and control != "console.emergency_stop":
+            return False, "emergency stop engaged"
+
+        kind = spec["kind"]
+
+        if kind in ("valve", "switch", "button"):
+            if value not in spec["states"]:
+                return False, f"'{value}' is not valid for {control}"
+        elif kind in ("analog", "axis"):
+            try:
+                value = float(value)
+            except (TypeError, ValueError):
+                return False, f"'{value}' is not a number"
+            if not (spec["min"] <= value <= spec["max"]):
+                return False, f"value must be between {spec['min']} and {spec['max']}"
+
+        if control.startswith("bop."):
+            return self._apply_bop(control, value)
+        if control.startswith("console.pump_"):
+            self.state["pumps"][control.split(".", 1)[1]]["active"] = value == "on"
+            return True, None
+        if control == "console.auto_drill":
+            self.auto_drill = value == "on"
+            return True, None
+        if control == "console.emergency_stop":
+            self._trigger_emergency()
+            return True, None
+        if control == "swaco.choke":
+            self.state["swaco"]["choke_position"] = value
+            return True, None
+        if control == "tds.throttle":
+            self.throttle = value
+            return True, None
+        if control == "tds.rpm_setpoint":
+            self.rpm_setpoint = value
+            return True, None
+        if control == "tds.wob_setpoint":
+            self.wob_setpoint = value
+            return True, None
+
+        return False, f"control '{control}' is declared but not implemented"
+
+    def _apply_bop(self, control: str, value: str) -> tuple[bool, str | None]:
+        name = control.split(".", 1)[1]
+        if name == "master_valve":
+            self.state["bop"]["master_valve"] = value
+            return True, None
+
+        if self.state["bop"]["master_valve"] != "open":
+            return False, "master valve closed"
+
+        components = self.state["bop"]["components"]
+        if name not in components:
+            return False, f"unknown BOP component '{name}'"
+        if components[name] == value and name not in self._valves_moving:
+            return True, None  # already there; accept idempotently
+
+        components[name] = "moving"
+        self._valves_moving[name] = (value, time.monotonic() + VALVE_TRAVEL_S)
+        return True, None
+
+    def _trigger_emergency(self) -> None:
+        self.emergency = True
+        self.auto_drill = False
+        self.throttle = 0.0
+        self.rpm_setpoint = 0.0
+        for pump in ("pump_1", "pump_2", "pump_3"):
+            self.state["pumps"][pump]["active"] = False
+        if self.state["bop"]["master_valve"] == "open":
+            for name in ("annular_1", "blind_shear_ram"):
+                self.state["bop"]["components"][name] = "moving"
+                self._valves_moving[name] = ("closed", time.monotonic() + VALVE_TRAVEL_S)
+
+    def clear_emergency(self) -> None:
+        self.emergency = False
+
+    # -- tick ---------------------------------------------------------------
+
+    def tick(self, dt: float) -> list[dict[str, Any]]:
+        """Advance the model. Returns events raised during this tick."""
+        events: list[dict[str, Any]] = []
+        now = time.monotonic()
+        d = self.state["drilling"]
+
+        # Valve travel completion is carried by state, not by an event -- a
+        # client that missed an event must never end up with a wrong picture
+        # of which rams are closed.
+        for name, (target, done_at) in list(self._valves_moving.items()):
+            if now >= done_at:
+                self.state["bop"]["components"][name] = target
+                del self._valves_moving[name]
+
+        target_rpm = 0.0 if self.emergency else self.rpm_setpoint
+        d["rpm"] += (target_rpm - d["rpm"]) * min(1.0, dt * 2.0)
+
+        if abs(self.throttle) > 0.01 and not self.emergency:
+            d["tds_position_ft"] = max(0.0, min(120.0, d["tds_position_ft"] - self.throttle * dt * 8.0))
+            d["tds_movement"] = "down" if self.throttle > 0 else "up"
+        else:
+            d["tds_movement"] = "stop"
+
+        d["auto_drill"] = self.auto_drill
+        drilling = self.auto_drill and d["rpm"] > 10 and not self.emergency
+        d["wob_klbs"] += ((self.wob_setpoint if drilling else 0.0) - d["wob_klbs"]) * min(1.0, dt * 1.5)
+        d["rop_fph"] = max(0.0, d["wob_klbs"] * d["rpm"] * 0.014) if drilling else 0.0
+        d["bit_depth_ft"] = min(d["hole_depth_ft"], d["bit_depth_ft"] + d["rop_fph"] * dt / 3600.0)
+        if d["bit_depth_ft"] >= d["hole_depth_ft"]:
+            d["hole_depth_ft"] += d["rop_fph"] * dt / 3600.0
+        d["torque_ftlb"] = d["wob_klbs"] * 320.0 + d["rpm"] * 8.0
+        d["hookload_klbs"] = 200.0 - d["wob_klbs"] + math.sin((now - self.t0) * 0.7) * 1.2
+
+        pumps = self.state["pumps"]
+        total_flow = 0.0
+        for name in ("pump_1", "pump_2", "pump_3"):
+            p = pumps[name]
+            target_spm = 65.0 if p["active"] else 0.0
+            p["spm"] += (target_spm - p["spm"]) * min(1.0, dt * 1.2)
+            p["pressure_psi"] = p["spm"] * 44.0 + (random.uniform(-8, 8) if p["spm"] > 1 else 0.0)
+            total_flow += p["spm"] * 3.2
+        pumps["total_flow_gpm"] = total_flow
+
+        sw = self.state["swaco"]
+        sw["standpipe_psi"] = total_flow * 4.6 * (1.0 + (1.0 - sw["choke_position"]) * 0.35)
+        sw["casing_psi"] = 400.0 + (1.0 - sw["choke_position"]) * 900.0
+        sw["total_strokes"] += sum(pumps[p]["spm"] for p in ("pump_1", "pump_2", "pump_3")) * dt / 60.0
+        sw["total_volume_bbl"] = sw["total_strokes"] * 0.0345
+
+        alarms: list[str] = []
+        if sw["standpipe_psi"] > 4000:
+            alarms.append("standpipe_overpressure")
+        if self.emergency:
+            alarms.append("emergency_stop")
+        if alarms != self.state["alarms"]:
+            for a in set(alarms) - set(self.state["alarms"]):
+                events.append(
+                    {
+                        "kind": "alarm.raised",
+                        "severity": "critical" if a == "emergency_stop" else "warning",
+                        "message": a.replace("_", " ").capitalize(),
+                        "data": {"alarm": a},
+                    }
+                )
+            for a in set(self.state["alarms"]) - set(alarms):
+                events.append(
+                    {
+                        "kind": "alarm.cleared",
+                        "severity": "info",
+                        "message": f"{a.replace('_', ' ').capitalize()} cleared",
+                        "data": {"alarm": a},
+                    }
+                )
+            self.state["alarms"] = alarms
+
+        return events
+
+    def snapshot(self) -> dict[str, Any]:
+        return copy.deepcopy(self.state)
+
+
+class Session:
+    """One connected VR client.
+
+    Only one is permitted at a time (protocol section 7): two controllers of a
+    single well is a safety problem, not a feature.
+    """
+
+    def __init__(self, ws, model: RigModel, tick_hz: float) -> None:
+        self.ws = ws
+        self.model = model
+        self.tick_hz = tick_hz
+        self.out_seq = 0
+        self.last_sent: dict[str, Any] | None = None
+        self.hello_done = False
+        self.last_command_seq: dict[str, int] = {}
+
+    async def send(self, msg_type: str, payload: dict[str, Any] | None = None) -> None:
+        self.out_seq += 1
+        frame = {
+            "v": PROTOCOL_VERSION,
+            "type": msg_type,
+            "seq": self.out_seq,
+            "ts": round(time.time(), 3),
+        }
+        if payload is not None:
+            frame["payload"] = payload
+        await self.ws.send(json.dumps(frame, separators=(",", ":")))
+
+    async def send_snapshot(self) -> None:
+        state = self.model.snapshot()
+        await self.send("state.snapshot", state)
+        self.last_sent = state
+
+    async def send_delta(self) -> None:
+        state = self.model.snapshot()
+        if self.last_sent is None:
+            await self.send_snapshot()
+            return
+        patch = _merge_patch_diff(self.last_sent, state)
+        if patch:
+            await self.send("state.delta", patch)
+            self.last_sent = state
+
+
+async def handle_client(ws, model: RigModel, tick_hz: float, holder: dict) -> None:
+    peer = getattr(ws, "remote_address", ("?", 0))
+    if holder.get("session") is not None:
+        log.warning("rejecting %s: another client holds control", peer)
+        await ws.close(CLOSE_ALREADY_CONTROLLED, "another client already holds control")
+        return
+
+    session = Session(ws, model, tick_hz)
+    holder["session"] = session
+    log.info("client connected: %s", peer)
+
+    pump_task = asyncio.create_task(_pump(session, model, tick_hz))
+    try:
+        async for raw in ws:
+            if len(raw) > MAX_FRAME_BYTES:
+                await ws.close(CLOSE_MALFORMED, "frame too large")
+                return
+            try:
+                msg = json.loads(raw)
+                if not isinstance(msg, dict):
+                    raise ValueError("not an object")
+            except (json.JSONDecodeError, ValueError) as exc:
+                await ws.close(CLOSE_MALFORMED, f"malformed message: {exc}")
+                return
+
+            version = msg.get("v")
+            if version != PROTOCOL_VERSION:
+                await ws.close(
+                    CLOSE_UNSUPPORTED_VERSION,
+                    f"engine speaks v{PROTOCOL_VERSION}, client sent v{version}",
+                )
+                return
+
+            await _dispatch(session, model, msg, tick_hz)
+    except ConnectionClosed:
+        pass
+    finally:
+        pump_task.cancel()
+        holder["session"] = None
+        log.info("client disconnected: %s", peer)
+
+
+async def _dispatch(session: Session, model: RigModel, msg: dict, tick_hz: float) -> None:
+    msg_type = msg.get("type")
+    payload = msg.get("payload") or {}
+
+    if msg_type == "hello":
+        await session.send(
+            "hello.ack",
+            {
+                "engine_version": "mock-1.0",
+                "tick_hz": tick_hz,
+                "hardware_input": False,
+                "controls": CONTROLS,
+            },
+        )
+        await session.send_snapshot()
+        session.hello_done = True
+        log.info("handshake complete with %s", payload.get("client", "unknown client"))
+        return
+
+    if not session.hello_done:
+        await session.ws.close(CLOSE_MALFORMED, "hello must be the first message")
+        return
+
+    if msg_type == "ping":
+        await session.send("pong")
+    elif msg_type == "resync":
+        log.info("client requested resync")
+        await session.send_snapshot()
+    elif msg_type == "command":
+        await _handle_command(session, model, msg, payload)
+    else:
+        await session.send("error", {"code": "unknown_type", "message": f"unknown type '{msg_type}'"})
+
+
+async def _handle_command(session: Session, model: RigModel, msg: dict, payload: dict) -> None:
+    cmd_id = payload.get("cmd_id")
+    control = payload.get("control")
+    action = payload.get("action", "set")
+    value = payload.get("value")
+
+    if not cmd_id or not control:
+        await session.send(
+            "ack",
+            {"cmd_id": cmd_id, "status": "rejected", "reason": "cmd_id and control are required"},
+        )
+        return
+
+    # A newer command on the same control supersedes an older one that arrived
+    # out of order. The client drops superseded acks silently.
+    seq = msg.get("seq", 0)
+    if seq < session.last_command_seq.get(control, 0):
+        await session.send("ack", {"cmd_id": cmd_id, "status": "superseded", "reason": None})
+        return
+    session.last_command_seq[control] = seq
+
+    accepted, reason = model.apply_command(control, action, value)
+    await session.send(
+        "ack",
+        {
+            "cmd_id": cmd_id,
+            "status": "accepted" if accepted else "rejected",
+            "reason": reason,
+        },
+    )
+    log.info(
+        "command %s %s=%s -> %s%s",
+        cmd_id, control, value,
+        "accepted" if accepted else "rejected",
+        f" ({reason})" if reason else "",
+    )
+    if accepted:
+        await session.send_delta()
+
+
+async def _pump(session: Session, model: RigModel, tick_hz: float) -> None:
+    """Drive the model and stream state to this client."""
+    period = 1.0 / tick_hz
+    last = time.monotonic()
+    last_snapshot = time.monotonic()
+    try:
+        while True:
+            await asyncio.sleep(period)
+            if not session.hello_done:
+                continue
+            now = time.monotonic()
+            dt, last = now - last, now
+
+            for event in model.tick(dt):
+                await session.send("event", event)
+
+            if now - last_snapshot >= SNAPSHOT_INTERVAL_S:
+                await session.send_snapshot()
+                last_snapshot = now
+            else:
+                await session.send_delta()
+    except (asyncio.CancelledError, ConnectionClosed):
+        pass
+
+
+async def main_async(host: str, port: int, tick_hz: float) -> None:
+    model = RigModel()
+    holder: dict = {"session": None}
+
+    async def handler(ws, *_):  # tolerate websockets<14 passing a path argument
+        await handle_client(ws, model, tick_hz, holder)
+
+    async with websockets.serve(handler, host, port, max_size=MAX_FRAME_BYTES):
+        log.info("mock engine (protocol v%d) listening on ws://%s:%d at %g Hz",
+                 PROTOCOL_VERSION, host, port, tick_hz)
+        log.info("bound to %s -- reachable from the LAN" if host == "0.0.0.0"
+                 else "bound to %s -- local only", host)
+        await asyncio.Future()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="VRSIM mock drilling engine (protocol v1)")
+    parser.add_argument("--host", default="0.0.0.0", help="bind address (default: all interfaces)")
+    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--tick-hz", type=float, default=20.0)
+    parser.add_argument("--verbose", action="store_true")
+    args = parser.parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s  %(levelname)-7s %(message)s",
+        datefmt="%H:%M:%S",
+    )
+    try:
+        asyncio.run(main_async(args.host, args.port, args.tick_hz))
+    except KeyboardInterrupt:
+        log.info("stopped")
+
+
+if __name__ == "__main__":
+    main()

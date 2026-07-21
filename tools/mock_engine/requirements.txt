@@ -1,0 +1,5 @@
+# Mock engine + conformance test.
+# Verified against websockets 15.0.1 on Python 3.9.
+# The handler tolerates the pre-14 two-argument signature, so older releases
+# also work; 12.0 is the floor because earlier versions differ on close codes.
+websockets>=12.0
