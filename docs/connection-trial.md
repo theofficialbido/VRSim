@@ -109,14 +109,42 @@ Editor Play session still holding the socket will lock out the headset. Stop it.
 
 ## Testing VR → engine
 
-The panel's self-test proves the reverse direction automatically, but it does it
-on a timer. To drive it yourself, the scene has four buttons on a stand in front
-of you. **Touch one with a controller** to press it.
+### The quick one: aim and pull the trigger
 
-They activate by proximity rather than by trigger, deliberately: that needs no
-interactor or input-action configuration, so if a press does nothing you know
-it is the network and not a binding. The real control library will use XRI
-interactables properly.
+A large button floats at eye level, labelled **`diag.test_button`**. Point a
+controller at it — you will see a ray, which turns **green** when it is on the
+button — and **pull the trigger**.
+
+On the PC, the engine prints:
+
+```
+==========================================================
+  BUTTON PRESS RECEIVED FROM VR   (press #1)
+==========================================================
+```
+
+That banner is the proof you asked for: the press left the headset, crossed the
+network, and was executed on the PC.
+
+The button then turns green in VR once the engine's press counter comes back
+increased — so you see both halves of the round trip, from both ends.
+
+It is verified by a **counter increasing** rather than by matching a value, so
+every press is provable on its own. A toggle that happened to already be in the
+requested position would confirm instantly and prove nothing.
+
+Trigger, grip and A/X are all bound. A diagnostic that failed because the wrong
+button was bound would look exactly like a network fault, which is the one
+confusion worth spending three bindings to avoid. If the ray never turns green,
+the problem is aim or tracking, not the connection.
+
+### The rest: four rig controls
+
+Four smaller buttons on a stand exercise real controls. These respond to the
+trigger too, and also to simply **touching them with a controller**.
+
+They also activate by proximity because that needs no input binding at all, so
+between the two methods a dead button is unambiguous.
 
 | Button | Sends | Watch |
 |---|---|---|

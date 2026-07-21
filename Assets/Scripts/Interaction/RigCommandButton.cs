@@ -40,11 +40,20 @@ namespace VRSIM.Interaction
         public string onCommandValue = "on";
         public string offCommandValue = "off";
 
+        public enum VerifyMode
+        {
+            /// <summary>State must equal the expected value. For toggles and valves.</summary>
+            EqualsValue,
+            /// <summary>State must be numerically greater than before. For press counters.</summary>
+            ValueIncreases,
+        }
+
         [Header("Round-trip verification")]
         [Tooltip("Dotted path into rig state that this command should change, " +
                  "e.g. pumps.pump_1.active or bop.components.annular_1")]
         public string statePath = "pumps.pump_1.active";
-        [Tooltip("Value at statePath meaning the command took effect.")]
+        public VerifyMode verifyMode = VerifyMode.EqualsValue;
+        [Tooltip("Value at statePath meaning the command took effect. EqualsValue mode only.")]
         public string onStateValue = "True";
         public string offStateValue = "False";
 
@@ -76,6 +85,7 @@ namespace VRSIM.Interaction
         private string _expectedStateValue;
         private float _rearmAt;
         private float _requestedAt;
+        private double _baseline;
         private string _status = "ready";
 
         private void Awake()
@@ -129,7 +139,18 @@ namespace VRSIM.Interaction
 
             _wantOn = kind == ButtonKind.Momentary || !_wantOn;
             var value = _wantOn ? onCommandValue : offCommandValue;
-            _expectedStateValue = _wantOn ? onStateValue : offStateValue;
+
+            if (verifyMode == VerifyMode.ValueIncreases)
+            {
+                // Remember where the counter was, so we can tell this press
+                // apart from the previous one.
+                _baseline = ReadNumber(statePath);
+                _expectedStateValue = "<increase>";
+            }
+            else
+            {
+                _expectedStateValue = _wantOn ? onStateValue : offStateValue;
+            }
 
             // Squash immediately. Local visual feedback must not wait for the
             // network, or every control feels broken over Wi-Fi -- but it is
@@ -171,13 +192,19 @@ namespace VRSIM.Interaction
             var actual = ReadState(statePath);
             if (actual == null) return;
 
-            if (!string.Equals(actual, _expectedStateValue, System.StringComparison.OrdinalIgnoreCase))
+            var satisfied = verifyMode == VerifyMode.ValueIncreases
+                ? ReadNumber(statePath) > _baseline
+                : string.Equals(actual, _expectedStateValue, System.StringComparison.OrdinalIgnoreCase);
+
+            if (!satisfied)
             {
                 // Not there yet. Valves take seconds to travel and report
                 // "moving" on the way, which is a legitimate intermediate state.
                 if (Time.realtimeSinceStartup - _requestedAt > 8f)
                 {
-                    _status = $"state never became {_expectedStateValue} (is {actual})";
+                    _status = verifyMode == VerifyMode.ValueIncreases
+                        ? $"counter never moved (still {actual})"
+                        : $"state never became {_expectedStateValue} (is {actual})";
                     SetVisual(Visual.Rejected);
                     _expectedStateValue = null;
                     transform.localScale = _restScale;
@@ -207,6 +234,15 @@ namespace VRSIM.Interaction
                 node = node[part];
             }
             return node?.ToString();
+        }
+
+        private double ReadNumber(string path)
+        {
+            var text = ReadState(path);
+            return double.TryParse(text, System.Globalization.NumberStyles.Any,
+                                   System.Globalization.CultureInfo.InvariantCulture, out var value)
+                ? value
+                : double.MinValue;
         }
 
         private void UpdateLabel()

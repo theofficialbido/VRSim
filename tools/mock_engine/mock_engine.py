@@ -66,6 +66,9 @@ CONTROLS: list[dict[str, Any]] = [
     {"id": "tds.throttle", "kind": "axis", "min": -1.0, "max": 1.0},
     {"id": "tds.rpm_setpoint", "kind": "analog", "min": 0.0, "max": 250.0},
     {"id": "tds.wob_setpoint", "kind": "analog", "min": 0.0, "max": 60.0},
+    # Diagnostic only: exists so a human in a headset can press something
+    # and see unmistakable proof on the PC that it arrived.
+    {"id": "diag.test_button", "kind": "button", "states": ["press"]},
 ]
 
 CONTROLS_BY_ID = {c["id"]: c for c in CONTROLS}
@@ -190,6 +193,7 @@ class RigModel:
                 "total_volume_bbl": 0.0,
             },
             "alarms": [],
+            "diag": {"button_presses": 0, "last_press_source": ""},
         }
 
     # -- command handling ---------------------------------------------------
@@ -227,6 +231,13 @@ class RigModel:
             return True, None
         if control == "console.auto_drill":
             self.auto_drill = value == "on"
+            return True, None
+        if control == "diag.test_button":
+            self.state["diag"]["button_presses"] += 1
+            n = self.state["diag"]["button_presses"]
+            log.info("=" * 58)
+            log.info("  BUTTON PRESS RECEIVED FROM VR   (press #%d)", n)
+            log.info("=" * 58)
             return True, None
         if control == "console.emergency_stop":
             self._trigger_emergency()

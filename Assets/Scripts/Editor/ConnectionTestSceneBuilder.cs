@@ -98,6 +98,18 @@ namespace VRSIM.EditorTools
             var hud = linkGo.AddComponent<ConnectionHud>();
             hud.selfTestControl = "console.pump_3";
 
+            // -- the headline test: aim, pull the trigger, and watch the PC.
+            //    A momentary press verified by a counter increasing, so every
+            //    press is individually provable rather than being lost in a
+            //    toggle that happens to already be in the right position.
+            var diag = BuildButton(null, connection, leftTip, rightTip, 0f,
+                "diag.test_button", "diag.button_presses", "press", "press", "", "");
+            diag.verifyMode = RigCommandButton.VerifyMode.ValueIncreases;
+            diag.kind = RigCommandButton.ButtonKind.Momentary;
+            diag.transform.position = new Vector3(0f, 1.35f, 0.6f);
+            diag.transform.localScale = new Vector3(0.34f, 0.09f, 0.16f);
+            diag.name = "PRESS ME (diag.test_button)";
+
             // -- command buttons, to test the VR -> engine direction.
             var panel = new GameObject("Command Buttons").transform;
             panel.position = new Vector3(0f, 1.0f, 0.55f);
@@ -158,23 +170,28 @@ namespace VRSIM.EditorTools
             tip.transform.SetParent(go.transform, false);
             tip.transform.localPosition = new Vector3(0f, 0f, 0.045f);
             tip.transform.localScale = Vector3.one * 0.028f;
-            Object.DestroyImmediate(tip.GetComponent<Collider>()); // proximity is by distance, not physics
+            // No collider: it must not block the pointer's own raycast.
+            Object.DestroyImmediate(tip.GetComponent<Collider>());
+
+            // Aim-and-trigger, in addition to touching buttons directly.
+            var pointer = go.AddComponent<ControllerRayPointer>();
+            pointer.hand = hand;
 
             return tip.transform;
         }
 
-        private static void BuildButton(Transform parent, RigConnection connection,
-                                        Transform leftTip, Transform rightTip, float x,
-                                        string controlId, string statePath,
-                                        string onCommand, string offCommand,
-                                        string onState, string offState)
+        private static RigCommandButton BuildButton(Transform parent, RigConnection connection,
+                                                    Transform leftTip, Transform rightTip, float x,
+                                                    string controlId, string statePath,
+                                                    string onCommand, string offCommand,
+                                                    string onState, string offState)
         {
             var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
             body.name = $"Button {controlId}";
-            body.transform.SetParent(parent, false);
+            if (parent != null) body.transform.SetParent(parent, false);
             body.transform.localPosition = new Vector3(x, 0f, 0f);
             body.transform.localScale = new Vector3(0.13f, 0.05f, 0.09f);
-            Object.DestroyImmediate(body.GetComponent<Collider>());
+            // Collider kept: the pointer raycasts against it.
 
             var labelGo = new GameObject("Label");
             labelGo.transform.SetParent(body.transform, false);
@@ -198,6 +215,7 @@ namespace VRSIM.EditorTools
             button.offStateValue = offState;
             button.label = label;
             button.activators = new System.Collections.Generic.List<Transform> { leftTip, rightTip };
+            return button;
         }
 
         /// <summary>
