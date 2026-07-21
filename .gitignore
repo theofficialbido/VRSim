@@ -42,6 +42,18 @@ crashlytics-build.properties
 *.unitypackage
 *.app
 
+# ---- Large 3D art (temporarily excluded) ----
+# ~700 MB, and Rig(Met2ata3).glb alone is 149 MB, past GitHub's hard 100 MB
+# per-file limit. The models are also being re-cut for Quest, so committing
+# them now would spend the repo's size budget on a version about to be
+# replaced. Must be committed from Abdul's machine when the time comes, so the
+# .meta GUIDs the scene depends on are preserved. See docs/art-and-assets.md.
+Assets/_Prefabs/Environments/**/*.glb
+Assets/_Prefabs/Environments/**/*.glb.meta
+Assets/_Prefabs/Environments/3d/
+Assets/_Prefabs/Environments/textures/
+Assets/Source Files/Models/Backgrounds/
+
 # ---- OS noise ----
 .DS_Store
 Thumbs.db
