@@ -17,8 +17,8 @@ public class SWACOPanelController : MonoBehaviour
     public RigConnection connection;
 
     [Header("Light Controls")]
-    [Tooltip("Hold and Reset indicators. Protocol v1 has no field for these -- "
-           + "see the note in OnStateChanged.")]
+    [Tooltip("Hold and Reset indicators, driven by swaco.hold_active and "
+           + "swaco.reset_active.")]
     public GameObject holdLight;
     public GameObject resetLight;
 
@@ -78,7 +78,7 @@ public class SWACOPanelController : MonoBehaviour
 
     private void Awake()
     {
-        if (connection == null) connection = FindObjectOfType<RigConnection>();
+        if (connection == null) connection = FindAnyObjectByType<RigConnection>();
     }
 
     private void OnEnable()
@@ -120,10 +120,21 @@ public class SWACOPanelController : MonoBehaviour
         Set(chokeManifoldPressureText, chokeManifoldPressure3DText,
             string.Format(pressureFormat, swaco.StandpipePsi * swaco.ChokePosition));
 
-        // Hold and Reset are physical indicators on the real panel, but
-        // protocol v1 defines no field for them, so they are left alone rather
-        // than driven from an invented meaning. They need adding to the
-        // protocol (docs/protocol.md section 5.2) once the engine models them.
+        SetLight(holdLight, swaco.HoldActive);
+        SetLight(resetLight, swaco.ResetActive);
+    }
+
+    /// <summary>
+    /// Switches an indicator lamp, if one is assigned.
+    ///
+    /// Hold and Reset are physical lamps on the panel that protocol v1 did not
+    /// originally model. It now carries hold_active and reset_active
+    /// (docs/protocol.md section 5.2), so they are driven from engine state
+    /// like every other indicator rather than left dark.
+    /// </summary>
+    private static void SetLight(GameObject light, bool on)
+    {
+        if (light != null && light.activeSelf != on) light.SetActive(on);
     }
 
     /// <summary>Maps a pressure onto the gauge's sweep, clamped to the dial.</summary>

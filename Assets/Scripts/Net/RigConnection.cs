@@ -86,6 +86,7 @@ namespace VRSIM.Net
         private long _outSeq;
         private long _lastInSeq;
         private bool _helloAcked;
+        private bool _awaitingResync;
         private float _lastMessageTime;
         private float _lastPingSentAt = -1f;
         private int _reconnectAttempt;
@@ -189,6 +190,7 @@ namespace VRSIM.Net
         private IEnumerator OpenSocket(string endpoint)
         {
             _helloAcked = false;
+            _awaitingResync = false;
             _outSeq = 0;
             _lastInSeq = 0;
             _pending.Clear();
@@ -244,9 +246,15 @@ namespace VRSIM.Net
             // rather than awaited; the loop below drives the message pump.
             _socket.Connect();
 
-            while (!closed)
+            // The pump also stops when _socket goes null, not only when OnClose
+            // fires. A pong timeout or a version mismatch closes the socket from
+            // inside this loop, and OnClose arrives a frame or more later --
+            // dispatching on the nulled field in between threw, which killed the
+            // coroutine and with it every retry.
+            while (!closed && _socket != null)
             {
                 _socket.DispatchMessageQueue();
+                if (_socket == null) break; // a handler closed it mid-dispatch
                 Tick();
                 yield return null;
             }
@@ -322,20 +330,34 @@ namespace VRSIM.Net
             {
                 _lastErrorCode = "unsupported_version";
                 _lastErrorMessage = $"Engine speaks v{envelope.Version}, this app speaks v{Protocol.Version}";
+                // The protocol requires an error message before the close: a
+                // receiver that only closes leaves the other end guessing,
+                // because close codes above 4000 do not survive most clients.
+                Send(Protocol.Error, new
+                {
+                    code = _lastErrorCode,
+                    message = _lastErrorMessage,
+                    close_code = Protocol.CloseUnsupportedVersion,
+                });
                 CloseSocket();
                 return;
             }
 
-            // Gap detection. A delta applied across a gap silently corrupts the
-            // mirror, so recover with a full snapshot instead.
-            if (envelope.Type == Protocol.StateDelta && _lastInSeq > 0 && envelope.Seq != _lastInSeq + 1)
+            // Gap detection. seq is per-sender across every type, so a gap is
+            // checked on all of them: losing deltas 10 and 11 and then seeing
+            // ack 12 leaves delta 13 looking contiguous, and the loss is missed.
+            if (envelope.Seq > 0 && _lastInSeq > 0 && envelope.Seq != _lastInSeq + 1)
             {
                 Debug.LogWarning($"[RigConnection] sequence gap {_lastInSeq} -> {envelope.Seq}; resyncing");
-                _lastInSeq = envelope.Seq;
+                _awaitingResync = true;
                 Send(Protocol.Resync);
-                return;
             }
             if (envelope.Seq > 0) _lastInSeq = envelope.Seq;
+
+            // Every delta until the snapshot arrives is dropped, not just the
+            // one that exposed the gap. Applying the rest would keep patching a
+            // mirror already known to have diverged.
+            if (_awaitingResync && envelope.Type == Protocol.StateDelta) return;
 
             switch (envelope.Type)
             {
@@ -351,6 +373,7 @@ namespace VRSIM.Net
                     break;
                 }
                 case Protocol.StateSnapshot:
+                    _awaitingResync = false;
                     State.ApplySnapshot(envelope.Payload);
                     SetStatus(ConnectionStatus.Connected, $"Connected to {ResolvedEndpoint}");
                     break;

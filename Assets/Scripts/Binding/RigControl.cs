@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.Events;
 using VRSIM.Net;
+using VRSIM.State;
 
 namespace VRSIM.Binding
 {
@@ -93,14 +94,27 @@ namespace VRSIM.Binding
         /// <summary>What a pointer shows when aimed at this control.</summary>
         public string PressableLabel => controlId + "\n" + Status;
 
-        private void Awake() => _connection = FindObjectOfType<RigConnection>();
+        private void Awake() => _connection = FindAnyObjectByType<RigConnection>();
 
         private void OnEnable()
         {
             if (_connection == null) return;
-            _connection.State.Changed += _ => Verify();
+            _connection.State.Changed += OnStateChanged;
             _connection.StatusChanged += OnStatusChanged;
         }
+
+        private void OnDisable()
+        {
+            if (_connection == null) return;
+            _connection.State.Changed -= OnStateChanged;
+            _connection.StatusChanged -= OnStatusChanged;
+        }
+
+        // A named handler rather than a lambda, so it can be unsubscribed. The
+        // lambda it replaces was added on every enable and removed on none, so
+        // a control toggled off and on verified twice per state message, and a
+        // destroyed one kept the connection holding a dead object.
+        private void OnStateChanged(RigSnapshot snapshot) => Verify();
 
         private void OnStatusChanged(ConnectionStatus status, string detail)
         {
