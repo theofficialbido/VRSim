@@ -1,7 +1,6 @@
 using TMPro;
 using UnityEngine;
 using VRSIM.Net;
-using VRSIM.Presentation;
 using VRSIM.State;
 
 /// <summary>
