@@ -117,7 +117,7 @@ public class BOPPanelController : MonoBehaviour
 
     private void Awake()
     {
-        if (connection == null) connection = FindObjectOfType<RigConnection>();
+        if (connection == null) connection = FindAnyObjectByType<RigConnection>();
         _block = new MaterialPropertyBlock();
         if (masterValveObject != null)
             _valveClosedRotation = masterValveObject.transform.localRotation;

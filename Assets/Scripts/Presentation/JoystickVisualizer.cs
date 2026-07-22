@@ -47,7 +47,7 @@ public class JoystickVisualizer : MonoBehaviour
 
     private void Awake()
     {
-        if (connection == null) connection = FindObjectOfType<RigConnection>();
+        if (connection == null) connection = FindAnyObjectByType<RigConnection>();
         if (joystickStick == null) joystickStick = transform;
         _initialRotation = joystickStick.localRotation;
         _initialPosition = joystickStick.localPosition;

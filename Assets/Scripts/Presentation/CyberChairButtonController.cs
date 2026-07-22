@@ -61,7 +61,7 @@ public class CyberChairButtonController : MonoBehaviour
 
     private void Awake()
     {
-        if (connection == null) connection = FindObjectOfType<RigConnection>();
+        if (connection == null) connection = FindAnyObjectByType<RigConnection>();
         _block = new MaterialPropertyBlock();
         _pump1 = Init(pump1Button);
         _pump2 = Init(pump2Button);

@@ -26,6 +26,9 @@ namespace VRSIM.EditorTools
     {
         private const string WiringPath = "Assets/Scripts/Editor/BopLightWiring.json";
 
+        // JsonUtility fills these by reflection, which the compiler cannot see,
+        // so it reports all twenty as never assigned and buries real warnings.
+#pragma warning disable 0649
         [Serializable]
         private class Wiring
         {
@@ -46,6 +49,7 @@ namespace VRSIM.EditorTools
             public string masterValveGreenLight, masterValveRedLight, masterValveObject;
             public string annularPressure3D, manifoldPressure3D, accumulatorPressure3D, airPressure3D;
         }
+#pragma warning restore 0649
 
         private static readonly Color GreenOn = new Color(0.25f, 0.95f, 0.35f);
         private static readonly Color RedOn = new Color(0.95f, 0.25f, 0.20f);
@@ -54,7 +58,7 @@ namespace VRSIM.EditorTools
         [MenuItem("VRSIM/Setup/Restore BOP Light Wiring", priority = 22)]
         public static void Restore()
         {
-            var panel = UnityEngine.Object.FindObjectOfType<BOPPanelController>();
+            var panel = UnityEngine.Object.FindAnyObjectByType<BOPPanelController>();
             if (panel == null)
             {
                 EditorUtility.DisplayDialog("Not found",

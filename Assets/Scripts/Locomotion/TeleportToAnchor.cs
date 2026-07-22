@@ -39,7 +39,7 @@ namespace VRSIM.Locomotion
 
         private void Awake()
         {
-            if (provider == null) provider = FindObjectOfType<Teleportation.TeleportationProvider>();
+            if (provider == null) provider = FindAnyObjectByType<Teleportation.TeleportationProvider>();
         }
 
         /// <summary>Go to the anchor assigned on this component.</summary>
@@ -59,7 +59,7 @@ namespace VRSIM.Locomotion
                 return;
             }
 
-            if (provider == null) provider = FindObjectOfType<Teleportation.TeleportationProvider>();
+            if (provider == null) provider = FindAnyObjectByType<Teleportation.TeleportationProvider>();
             if (provider == null)
             {
                 Debug.LogWarning(

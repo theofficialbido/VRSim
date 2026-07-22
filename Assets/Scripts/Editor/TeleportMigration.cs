@@ -27,8 +27,11 @@ namespace VRSIM.EditorTools
         public static void Migrate()
         {
             // The old classes are the ones named Teleport* that carry an anchor
-            // field and are not the replacement itself.
-            var legacy = Object.FindObjectsOfType<MonoBehaviour>()
+            // field and are not the replacement itself. Inactive objects are
+            // included: a migration that quietly skips a disabled panel leaves
+            // its buttons wired to a class that is about to be deleted.
+            var legacy = Object
+                .FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include)
                 .Where(m => m != null
                             && m.GetType().Name.StartsWith("Teleport")
                             && !(m is TeleportToAnchor)
@@ -42,7 +45,7 @@ namespace VRSIM.EditorTools
                 return;
             }
 
-            var buttons = Object.FindObjectsOfType<Button>(true);
+            var buttons = Object.FindObjectsByType<Button>(FindObjectsInactive.Include);
             int rewired = 0, created = 0, orphaned = 0;
             var report = new List<string>();
 

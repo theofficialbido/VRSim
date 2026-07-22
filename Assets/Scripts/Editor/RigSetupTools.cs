@@ -18,7 +18,7 @@ namespace VRSIM.EditorTools
         [MenuItem("VRSIM/Setup/Add RigConnection To Scene", priority = 20)]
         public static void AddRigConnection()
         {
-            var existing = Object.FindObjectOfType<RigConnection>();
+            var existing = Object.FindAnyObjectByType<RigConnection>();
             if (existing != null)
             {
                 Selection.activeGameObject = existing.gameObject;
