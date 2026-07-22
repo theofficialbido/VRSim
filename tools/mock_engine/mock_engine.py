@@ -69,6 +69,8 @@ CONTROLS: list[dict[str, Any]] = [
     # Diagnostic only: exists so a human in a headset can press something
     # and see unmistakable proof on the PC that it arrived.
     {"id": "diag.test_button", "kind": "button", "states": ["press"]},
+    {"id": "swaco.hold", "kind": "switch", "states": ["on", "off"]},
+    {"id": "swaco.reset", "kind": "button", "states": ["press"]},
 ]
 
 CONTROLS_BY_ID = {c["id"]: c for c in CONTROLS}
@@ -147,6 +149,7 @@ class RigModel:
 
         # Valves in transit: id -> (target_state, completes_at_monotonic)
         self._valves_moving: dict[str, tuple[str, float]] = {}
+        self._demo_index = 0
 
         self.state: dict[str, Any] = {
             "drilling": {
@@ -191,6 +194,8 @@ class RigModel:
                 "choke_position": 0.35,
                 "total_strokes": 0.0,
                 "total_volume_bbl": 0.0,
+                "hold_active": False,
+                "reset_active": False,
             },
             "alarms": [],
             "diag": {"button_presses": 0, "last_press_source": ""},
@@ -241,6 +246,17 @@ class RigModel:
             return True, None
         if control == "console.emergency_stop":
             self._trigger_emergency()
+            return True, None
+        if control == "swaco.hold":
+            self.state["swaco"]["hold_active"] = value == "on"
+            return True, None
+        if control == "swaco.reset":
+            # Momentary: latches briefly so the lamp is visibly driven,
+            # then clears on the next tick.
+            self.state["swaco"]["reset_active"] = True
+            self.state["swaco"]["total_strokes"] = 0.0
+            self.state["swaco"]["total_volume_bbl"] = 0.0
+            self._reset_clear_at = time.monotonic() + 0.75
             return True, None
         if control == "swaco.choke":
             self.state["swaco"]["choke_position"] = value
@@ -307,6 +323,10 @@ class RigModel:
                 self.state["bop"]["components"][name] = target
                 del self._valves_moving[name]
 
+        if getattr(self, "_reset_clear_at", 0) and now >= self._reset_clear_at:
+            self.state["swaco"]["reset_active"] = False
+            self._reset_clear_at = 0
+
         target_rpm = 0.0 if self.emergency else self.rpm_setpoint
         d["rpm"] += (target_rpm - d["rpm"]) * min(1.0, dt * 2.0)
 
@@ -370,6 +390,42 @@ class RigModel:
 
         return events
 
+    # -- BOP light demo -------------------------------------------------
+
+    DEMO_SEQUENCE = [
+        "annular_1", "pipe_ram_1", "pipe_ram_2", "pipe_ram_3",
+        "blind_shear_ram", "kill_line", "choke_line", "master_valve",
+    ]
+
+    def demo_step(self) -> str:
+        """Toggle the next BOP component, for watching the panel light up.
+
+        Walks the components in order so every lamp on the panel is exercised,
+        rather than picking at random and leaving some never lit. Rams go
+        through the normal travel path, so each toggle shows open -> moving ->
+        closed and the amber "moving" state is visible for its full 2.5s.
+        """
+        name = self.DEMO_SEQUENCE[self._demo_index % len(self.DEMO_SEQUENCE)]
+        self._demo_index += 1
+
+        if name == "master_valve":
+            current = self.state["bop"]["master_valve"]
+            target = "closed" if current == "open" else "open"
+            self.state["bop"]["master_valve"] = target
+            return f"master_valve -> {target}"
+
+        current = self.state["bop"]["components"].get(name, "open")
+        target = "open" if current == "closed" else "closed"
+
+        # Reopen the master valve if a previous step shut it, or the rams are
+        # interlocked and the demo would stall with nothing moving.
+        if self.state["bop"]["master_valve"] != "open":
+            self.state["bop"]["master_valve"] = "open"
+
+        self.state["bop"]["components"][name] = "moving"
+        self._valves_moving[name] = (target, time.monotonic() + VALVE_TRAVEL_S)
+        return f"{name} -> {target} (moving for {VALVE_TRAVEL_S}s)"
+
     def snapshot(self) -> dict[str, Any]:
         return copy.deepcopy(self.state)
 
@@ -418,7 +474,8 @@ class Session:
             self.last_sent = state
 
 
-async def handle_client(ws, model: RigModel, tick_hz: float, holder: dict) -> None:
+async def handle_client(ws, model: RigModel, tick_hz: float, holder: dict,
+                        demo_interval: float = 0.0) -> None:
     peer = getattr(ws, "remote_address", ("?", 0))
     if holder.get("session") is not None:
         log.warning("rejecting %s: another client holds control", peer)
@@ -430,7 +487,7 @@ async def handle_client(ws, model: RigModel, tick_hz: float, holder: dict) -> No
     holder["session"] = session
     log.info("client connected: %s", peer)
 
-    pump_task = asyncio.create_task(_pump(session, model, tick_hz))
+    pump_task = asyncio.create_task(_pump(session, model, tick_hz, demo_interval))
     try:
         async for raw in ws:
             if len(raw) > MAX_FRAME_BYTES:
@@ -537,11 +594,13 @@ async def _handle_command(session: Session, model: RigModel, msg: dict, payload:
         await session.send_delta()
 
 
-async def _pump(session: Session, model: RigModel, tick_hz: float) -> None:
+async def _pump(session: Session, model: RigModel, tick_hz: float,
+                demo_interval: float = 0.0) -> None:
     """Drive the model and stream state to this client."""
     period = 1.0 / tick_hz
     last = time.monotonic()
     last_snapshot = time.monotonic()
+    last_demo = time.monotonic()
     try:
         while True:
             await asyncio.sleep(period)
@@ -549,6 +608,10 @@ async def _pump(session: Session, model: RigModel, tick_hz: float) -> None:
                 continue
             now = time.monotonic()
             dt, last = now - last, now
+
+            if demo_interval > 0 and now - last_demo >= demo_interval:
+                log.info("[bop demo] %s", model.demo_step())
+                last_demo = now
 
             for event in model.tick(dt):
                 await session.send("event", event)
@@ -599,12 +662,13 @@ class DiscoveryResponder(asyncio.DatagramProtocol):
         self.transport.sendto(json.dumps(reply).encode("utf-8"), addr)
 
 
-async def main_async(host: str, port: int, tick_hz: float, discovery: bool) -> None:
+async def main_async(host: str, port: int, tick_hz: float, discovery: bool,
+                     demo_interval: float) -> None:
     model = RigModel()
     holder: dict = {"session": None}
 
     async def handler(ws, *_):  # tolerate websockets<14 passing a path argument
-        await handle_client(ws, model, tick_hz, holder)
+        await handle_client(ws, model, tick_hz, holder, demo_interval)
 
     transport = None
     if discovery:
@@ -653,6 +717,10 @@ def main() -> None:
     parser.add_argument("--host", default="0.0.0.0", help="bind address (default: all interfaces)")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--tick-hz", type=float, default=20.0)
+    parser.add_argument("--demo-bop", type=float, nargs="?", const=4.0, default=0.0,
+                        metavar="SECONDS",
+                        help="cycle BOP components so the panel lights can be watched "
+                             "(default every 4s)")
     parser.add_argument("--no-discovery", action="store_true",
                         help="do not answer UDP discovery broadcasts")
     parser.add_argument("--verbose", action="store_true")
@@ -664,7 +732,8 @@ def main() -> None:
         datefmt="%H:%M:%S",
     )
     try:
-        asyncio.run(main_async(args.host, args.port, args.tick_hz, not args.no_discovery))
+        asyncio.run(main_async(args.host, args.port, args.tick_hz,
+                           not args.no_discovery, args.demo_bop))
     except KeyboardInterrupt:
         log.info("stopped")
 

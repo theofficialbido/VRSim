@@ -648,6 +648,7 @@ GameObject:
   - component: {fileID: 145964756}
   - component: {fileID: 145964755}
   - component: {fileID: 145964754}
+  - component: {fileID: 145964757}
   m_Layer: 5
   m_Name: Button Mud Down C
   m_TagString: Untagged
@@ -718,8 +719,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1434194437}
-        m_TargetAssemblyTypeName: TeleportMudUpC, Assembly-CSharp
+      - m_Target: {fileID: 145964757}
+        m_TargetAssemblyTypeName: VRSIM.Locomotion.TeleportToAnchor, Assembly-CSharp
         m_MethodName: Teleport
         m_Mode: 1
         m_Arguments:
@@ -768,6 +769,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 145964752}
   m_CullTransparentMesh: 1
+--- !u!114 &145964757
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 145964752}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a2c5d41cf3e45b4ca9e1355de5aff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSIM.Locomotion.TeleportToAnchor
+  anchor: {fileID: 347950525}
+  provider: {fileID: 509824788}
+  verbose: 0
 --- !u!1 &162306978
 GameObject:
   m_ObjectHideFlags: 0
@@ -780,6 +796,7 @@ GameObject:
   - component: {fileID: 162306982}
   - component: {fileID: 162306981}
   - component: {fileID: 162306980}
+  - component: {fileID: 162306983}
   m_Layer: 5
   m_Name: Button Mud Up C
   m_TagString: Untagged
@@ -850,8 +867,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1434194438}
-        m_TargetAssemblyTypeName: TeleportMudDownC, Assembly-CSharp
+      - m_Target: {fileID: 162306983}
+        m_TargetAssemblyTypeName: VRSIM.Locomotion.TeleportToAnchor, Assembly-CSharp
         m_MethodName: Teleport
         m_Mode: 1
         m_Arguments:
@@ -900,6 +917,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 162306978}
   m_CullTransparentMesh: 1
+--- !u!114 &162306983
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 162306978}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a2c5d41cf3e45b4ca9e1355de5aff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSIM.Locomotion.TeleportToAnchor
+  anchor: {fileID: 1747626343}
+  provider: {fileID: 509824788}
+  verbose: 0
 --- !u!65 &162826063
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1258,6 +1290,7 @@ GameObject:
   - component: {fileID: 200596450}
   - component: {fileID: 200596449}
   - component: {fileID: 200596448}
+  - component: {fileID: 200596451}
   m_Layer: 5
   m_Name: Button Side
   m_TagString: Untagged
@@ -1328,8 +1361,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1434194447}
-        m_TargetAssemblyTypeName: TeleportSide, Assembly-CSharp
+      - m_Target: {fileID: 200596451}
+        m_TargetAssemblyTypeName: VRSIM.Locomotion.TeleportToAnchor, Assembly-CSharp
         m_MethodName: Teleport
         m_Mode: 1
         m_Arguments:
@@ -1378,6 +1411,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 200596446}
   m_CullTransparentMesh: 1
+--- !u!114 &200596451
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 200596446}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a2c5d41cf3e45b4ca9e1355de5aff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSIM.Locomotion.TeleportToAnchor
+  anchor: {fileID: 785706517}
+  provider: {fileID: 509824788}
+  verbose: 0
 --- !u!1 &207445183
 GameObject:
   m_ObjectHideFlags: 0
@@ -1436,6 +1484,7 @@ GameObject:
   - component: {fileID: 225780717}
   - component: {fileID: 225780716}
   - component: {fileID: 225780715}
+  - component: {fileID: 225780718}
   m_Layer: 5
   m_Name: Button Rig Floor 3 Down
   m_TagString: Untagged
@@ -1506,8 +1555,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1434194444}
-        m_TargetAssemblyTypeName: TeleportFloor2, Assembly-CSharp
+      - m_Target: {fileID: 225780718}
+        m_TargetAssemblyTypeName: VRSIM.Locomotion.TeleportToAnchor, Assembly-CSharp
         m_MethodName: Teleport
         m_Mode: 1
         m_Arguments:
@@ -1556,6 +1605,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 225780713}
   m_CullTransparentMesh: 1
+--- !u!114 &225780718
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 225780713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a2c5d41cf3e45b4ca9e1355de5aff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSIM.Locomotion.TeleportToAnchor
+  anchor: {fileID: 287803299}
+  provider: {fileID: 509824788}
+  verbose: 0
 --- !u!65 &226407046
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6837,6 +6901,7 @@ GameObject:
   - component: {fileID: 647072141}
   - component: {fileID: 647072140}
   - component: {fileID: 647072139}
+  - component: {fileID: 647072142}
   m_Layer: 5
   m_Name: Button Rig Floor 1 Down
   m_TagString: Untagged
@@ -6907,8 +6972,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1434194445}
-        m_TargetAssemblyTypeName: TeleportFloor3, Assembly-CSharp
+      - m_Target: {fileID: 647072142}
+        m_TargetAssemblyTypeName: VRSIM.Locomotion.TeleportToAnchor, Assembly-CSharp
         m_MethodName: Teleport
         m_Mode: 1
         m_Arguments:
@@ -6957,6 +7022,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 647072137}
   m_CullTransparentMesh: 1
+--- !u!114 &647072142
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 647072137}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a2c5d41cf3e45b4ca9e1355de5aff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSIM.Locomotion.TeleportToAnchor
+  anchor: {fileID: 1995497302}
+  provider: {fileID: 509824788}
+  verbose: 0
 --- !u!65 &656424921
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -8789,6 +8869,7 @@ GameObject:
   - component: {fileID: 916406123}
   - component: {fileID: 916406122}
   - component: {fileID: 916406121}
+  - component: {fileID: 916406124}
   m_Layer: 5
   m_Name: Button Cat Walk
   m_TagString: Untagged
@@ -8859,8 +8940,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1434194446}
-        m_TargetAssemblyTypeName: TeleportCatWalk, Assembly-CSharp
+      - m_Target: {fileID: 916406124}
+        m_TargetAssemblyTypeName: VRSIM.Locomotion.TeleportToAnchor, Assembly-CSharp
         m_MethodName: Teleport
         m_Mode: 1
         m_Arguments:
@@ -8909,6 +8990,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 916406119}
   m_CullTransparentMesh: 1
+--- !u!114 &916406124
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 916406119}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a2c5d41cf3e45b4ca9e1355de5aff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSIM.Locomotion.TeleportToAnchor
+  anchor: {fileID: 1437910915}
+  provider: {fileID: 509824788}
+  verbose: 0
 --- !u!65 &922330969
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -11082,6 +11178,7 @@ GameObject:
   - component: {fileID: 1193687569}
   - component: {fileID: 1193687568}
   - component: {fileID: 1193687567}
+  - component: {fileID: 1193687570}
   m_Layer: 5
   m_Name: Button Mud Down L
   m_TagString: Untagged
@@ -11152,8 +11249,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1434194443}
-        m_TargetAssemblyTypeName: TeleportMudUpL, Assembly-CSharp
+      - m_Target: {fileID: 1193687570}
+        m_TargetAssemblyTypeName: VRSIM.Locomotion.TeleportToAnchor, Assembly-CSharp
         m_MethodName: Teleport
         m_Mode: 1
         m_Arguments:
@@ -11202,6 +11299,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1193687565}
   m_CullTransparentMesh: 1
+--- !u!114 &1193687570
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1193687565}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a2c5d41cf3e45b4ca9e1355de5aff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSIM.Locomotion.TeleportToAnchor
+  anchor: {fileID: 1498049862}
+  provider: {fileID: 509824788}
+  verbose: 0
 --- !u!65 &1194077159
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -13065,6 +13177,7 @@ GameObject:
   - component: {fileID: 1390107612}
   - component: {fileID: 1390107611}
   - component: {fileID: 1390107610}
+  - component: {fileID: 1390107613}
   m_Layer: 5
   m_Name: Button Rig Down
   m_TagString: Untagged
@@ -13135,8 +13248,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1434194435}
-        m_TargetAssemblyTypeName: TeleportRigUp1, Assembly-CSharp
+      - m_Target: {fileID: 1390107613}
+        m_TargetAssemblyTypeName: VRSIM.Locomotion.TeleportToAnchor, Assembly-CSharp
         m_MethodName: Teleport
         m_Mode: 1
         m_Arguments:
@@ -13185,6 +13298,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1390107608}
   m_CullTransparentMesh: 1
+--- !u!114 &1390107613
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1390107608}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a2c5d41cf3e45b4ca9e1355de5aff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSIM.Locomotion.TeleportToAnchor
+  anchor: {fileID: 389402700}
+  provider: {fileID: 509824788}
+  verbose: 0
 --- !u!1 &1392761880
 GameObject:
   m_ObjectHideFlags: 0
@@ -13562,20 +13690,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1434194439}
-  - component: {fileID: 1434194438}
-  - component: {fileID: 1434194437}
-  - component: {fileID: 1434194436}
-  - component: {fileID: 1434194435}
-  - component: {fileID: 1434194443}
-  - component: {fileID: 1434194442}
-  - component: {fileID: 1434194441}
-  - component: {fileID: 1434194440}
-  - component: {fileID: 1434194444}
-  - component: {fileID: 1434194445}
-  - component: {fileID: 1434194446}
-  - component: {fileID: 1434194447}
   - component: {fileID: 1434194448}
-  - component: {fileID: 1434194451}
   - component: {fileID: 1434194454}
   - component: {fileID: 1434194455}
   - component: {fileID: 1434194457}
@@ -13586,62 +13701,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1434194435
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1434194434}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 175dfc1f2637452ba0ec658dff0c91c0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  anchor: {fileID: 389402700}
-  provider: {fileID: 509824788}
---- !u!114 &1434194436
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1434194434}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 55e230ae19bda1a49b7c14d5acd301ce, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  anchor: {fileID: 571369288}
-  provider: {fileID: 509824788}
---- !u!114 &1434194437
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1434194434}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bd07b65d50ccfbb4fac4f020e7a31dc6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  anchor: {fileID: 347950525}
-  provider: {fileID: 509824788}
---- !u!114 &1434194438
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1434194434}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 506e246fb34ebcc41be9bca00cf1012f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  anchor: {fileID: 1747626343}
-  provider: {fileID: 509824788}
 --- !u!4 &1434194439
 Transform:
   m_ObjectHideFlags: 0
@@ -13657,118 +13716,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1434194440
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1434194434}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 31b6d2f2c7ea60848ae00a5b7d55ce25, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  anchor: {fileID: 44466589}
-  provider: {fileID: 509824788}
---- !u!114 &1434194441
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1434194434}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 603e74b8ae1b7074e98d7a1f8a23da3f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  anchor: {fileID: 269700694}
-  provider: {fileID: 509824788}
---- !u!114 &1434194442
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1434194434}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 87120ea3725b77442a0865157eeaf0e4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  anchor: {fileID: 1061398251}
-  provider: {fileID: 509824788}
---- !u!114 &1434194443
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1434194434}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 041719888a365ba4895e9dd396ca9d46, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  anchor: {fileID: 1498049862}
-  provider: {fileID: 509824788}
---- !u!114 &1434194444
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1434194434}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3d65334cab30f944f897056665b2f11a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  anchor: {fileID: 287803299}
-  provider: {fileID: 509824788}
---- !u!114 &1434194445
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1434194434}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 516c774c681efb94c9e2578c285f0aad, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  anchor: {fileID: 1995497302}
-  provider: {fileID: 509824788}
---- !u!114 &1434194446
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1434194434}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9b83ee943d3e2f743bb85fdbcc716b94, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  anchor: {fileID: 1437910915}
-  provider: {fileID: 509824788}
---- !u!114 &1434194447
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1434194434}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 988a26d17e38b134cb5bcdde5bd91361, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  anchor: {fileID: 785706517}
-  provider: {fileID: 509824788}
 --- !u!114 &1434194448
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13783,54 +13730,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   anchor: {fileID: 729640446}
   provider: {fileID: 509824788}
---- !u!114 &1434194451
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1434194434}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9f7abc4503b3dd547afcb16472af74c3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  serverAddress: ws://localhost:8765
-  autoConnect: 1
-  reconnectDelay: 3
-  topDriveObject: {fileID: 6516300572091320220}
-  minHeight: 0
-  maxHeight: 20
-  useDirectPosition: 1
-  rotaryTableObject: {fileID: 0}
-  maxRotationSpeed: 250
-  pump1Indicator: {fileID: 0}
-  pump2Indicator: {fileID: 0}
-  pump3Indicator: {fileID: 0}
-  flowRateText: {fileID: 0}
-  availableCameras:
-  - {fileID: 2066211681}
-  - {fileID: 229161612}
-  - {fileID: 1027083241}
-  - {fileID: 1385114803}
-  - {fileID: 1535608190}
-  - {fileID: 298124092}
-  - {fileID: 1834688433}
-  - {fileID: 1596393006}
-  - {fileID: 2043100986}
-  - {fileID: 1917922000}
-  cameraMovementSpeed: 5
-  cameraRotationSpeed: 50
-  cameraZoomSpeed: 10
-  minFOV: 20
-  maxFOV: 120
-  maxLookUpAngle: 60
-  maxLookDownAngle: 60
-  tdsPositionText: {fileID: 0}
-  rpmText: {fileID: 0}
-  statusText: {fileID: 0}
-  cameraStatusText: {fileID: 0}
-  showDebugGUI: 0
 --- !u!114 &1434194454
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13843,6 +13742,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc00ee75970a38a40b4519320a5a3e16, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  connection: {fileID: 0}
   pump1Button: {fileID: 5299774912161590240}
   pump2Button: {fileID: 8798207300960457713}
   pump3Button: {fileID: 4413001214031881353}
@@ -13852,12 +13752,9 @@ MonoBehaviour:
   rotationAxis: {x: 0, y: 1, z: 0}
   rotationSpeed: 5
   smoothRotation: 1
-  onMaterial: {fileID: 0}
-  offMaterial: {fileID: 0}
   onEmissionColor: {r: 0, g: 1, b: 0, a: 1}
   offEmissionColor: {r: 1, g: 0, b: 0, a: 1}
-  showDebugLogs: 0
-  forceTestMode: 0
+  useEmission: 1
 --- !u!114 &1434194455
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13870,49 +13767,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40fe77323f1208a4caa2b034a148a738, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dataReceiver: {fileID: 1434194451}
-  enableNeedleSimulation: 0
-  annularGreenLight: {fileID: 1595925959}
-  pipeRamGreenLight: {fileID: 1000341562}
-  blindRamGreenLight: {fileID: 1304329100}
-  shearRamGreenLight: {fileID: 1059895142}
-  killLineGreenLight: {fileID: 750679432}
-  chokeLineGreenLight: {fileID: 413780471}
-  annularRedLight: {fileID: 229332117}
-  pipeRamRedLight: {fileID: 1217613473}
-  blindRamRedLight: {fileID: 343730078}
-  shearRamRedLight: {fileID: 2119082187}
-  killLineRedLight: {fileID: 1202967816}
-  chokeLineRedLight: {fileID: 196694863}
-  annularPressureText: {fileID: 0}
-  manifoldPressureText: {fileID: 0}
-  accumulatorPressureText: {fileID: 0}
-  airPressureText: {fileID: 0}
+  connection: {fileID: 0}
+  components: []
+  masterValve:
+    componentId: master_valve
+    label: Master Valve
+    lights: []
+    alsoCombine: []
+  masterValveObject: {fileID: 2895422972198822395}
+  valveOpenAngle: 90
+  rotationAxis: {x: 0, y: 0, z: 1}
+  valveRotationSpeed: 90
   annularPressure3D: {fileID: 1654836023}
   manifoldPressure3D: {fileID: 773003039}
   accumulatorPressure3D: {fileID: 945147669}
   airPressure3D: {fileID: 1392761882}
-  annularStatusText: {fileID: 0}
-  pipeRamStatusText: {fileID: 0}
-  blindRamStatusText: {fileID: 0}
-  shearRamStatusText: {fileID: 0}
-  killLineStatusText: {fileID: 0}
-  chokeLineStatusText: {fileID: 0}
-  masterValveGreenLight: {fileID: 0}
-  masterValveRedLight: {fileID: 0}
-  masterValveStatusText: {fileID: 0}
-  masterValveObject: {fileID: 2895422972198822395}
-  valveRotationSpeed: 90
-  rotationAxis: {x: 0, y: 0, z: 1}
   pressureFormat: '{0:F0} PSI'
-  includePressureLabel: 0
-  enablePressureColorCoding: 1
-  updateInterval: 0.1
-  enableDebugLogging: 0
-  annularMaxPressure: 5000
-  manifoldMaxPressure: 5000
-  accumulatorMaxPressure: 3000
-  airMaxPressure: 200
+  annularLowPsi: 500
+  manifoldLowPsi: 1500
+  accumulatorLowPsi: 1200
+  airLowPsi: 100
+  dimWhenStale: 1
+  validateOnConnect: 1
 --- !u!114 &1434194457
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13925,8 +13801,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 19d838a384dd7554089d503dec917bb8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dataReceiver: {fileID: 1434194451}
-  enableNeedleSimulation: 0
+  connection: {fileID: 0}
   holdLight: {fileID: 0}
   resetLight: {fileID: 0}
   standpipeNeedle: {fileID: 0}
@@ -13964,8 +13839,6 @@ MonoBehaviour:
   volumeFormat: '{0:F1} BBL'
   speedFormat: '{0:F0} SPM'
   strokesFormat: '{0:F0}'
-  includePressureLabels: 0
-  updateInterval: 0.1
 --- !u!65 &1435638518
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -14603,6 +14476,7 @@ GameObject:
   - component: {fileID: 1487211512}
   - component: {fileID: 1487211511}
   - component: {fileID: 1487211510}
+  - component: {fileID: 1487211513}
   m_Layer: 5
   m_Name: Button Rig Floor 2
   m_TagString: Untagged
@@ -14673,8 +14547,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1434194435}
-        m_TargetAssemblyTypeName: TeleportRigUp1, Assembly-CSharp
+      - m_Target: {fileID: 1487211513}
+        m_TargetAssemblyTypeName: VRSIM.Locomotion.TeleportToAnchor, Assembly-CSharp
         m_MethodName: Teleport
         m_Mode: 1
         m_Arguments:
@@ -14723,6 +14597,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1487211508}
   m_CullTransparentMesh: 1
+--- !u!114 &1487211513
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1487211508}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a2c5d41cf3e45b4ca9e1355de5aff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSIM.Locomotion.TeleportToAnchor
+  anchor: {fileID: 389402700}
+  provider: {fileID: 509824788}
+  verbose: 0
 --- !u!1 &1487235080
 GameObject:
   m_ObjectHideFlags: 0
@@ -14735,6 +14624,7 @@ GameObject:
   - component: {fileID: 1487235084}
   - component: {fileID: 1487235083}
   - component: {fileID: 1487235082}
+  - component: {fileID: 1487235085}
   m_Layer: 5
   m_Name: Button Rig Floor 1
   m_TagString: Untagged
@@ -14805,8 +14695,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1434194444}
-        m_TargetAssemblyTypeName: TeleportFloor2, Assembly-CSharp
+      - m_Target: {fileID: 1487235085}
+        m_TargetAssemblyTypeName: VRSIM.Locomotion.TeleportToAnchor, Assembly-CSharp
         m_MethodName: Teleport
         m_Mode: 1
         m_Arguments:
@@ -14855,6 +14745,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1487235080}
   m_CullTransparentMesh: 1
+--- !u!114 &1487235085
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1487235080}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a2c5d41cf3e45b4ca9e1355de5aff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSIM.Locomotion.TeleportToAnchor
+  anchor: {fileID: 287803299}
+  provider: {fileID: 509824788}
+  verbose: 0
 --- !u!65 &1489348405
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -15873,6 +15778,7 @@ GameObject:
   - component: {fileID: 1611650586}
   - component: {fileID: 1611650585}
   - component: {fileID: 1611650584}
+  - component: {fileID: 1611650587}
   m_Layer: 5
   m_Name: Button Rig Up
   m_TagString: Untagged
@@ -15943,8 +15849,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1434194436}
-        m_TargetAssemblyTypeName: TeleportRigDown, Assembly-CSharp
+      - m_Target: {fileID: 1611650587}
+        m_TargetAssemblyTypeName: VRSIM.Locomotion.TeleportToAnchor, Assembly-CSharp
         m_MethodName: Teleport
         m_Mode: 1
         m_Arguments:
@@ -15993,6 +15899,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1611650582}
   m_CullTransparentMesh: 1
+--- !u!114 &1611650587
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1611650582}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a2c5d41cf3e45b4ca9e1355de5aff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSIM.Locomotion.TeleportToAnchor
+  anchor: {fileID: 571369288}
+  provider: {fileID: 509824788}
+  verbose: 0
 --- !u!65 &1626727624
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -16026,6 +15947,7 @@ GameObject:
   - component: {fileID: 1636002281}
   - component: {fileID: 1636002280}
   - component: {fileID: 1636002279}
+  - component: {fileID: 1636002282}
   m_Layer: 5
   m_Name: Button Mud Down R
   m_TagString: Untagged
@@ -16096,8 +16018,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1434194442}
-        m_TargetAssemblyTypeName: TeleportMudUpR, Assembly-CSharp
+      - m_Target: {fileID: 1636002282}
+        m_TargetAssemblyTypeName: VRSIM.Locomotion.TeleportToAnchor, Assembly-CSharp
         m_MethodName: Teleport
         m_Mode: 1
         m_Arguments:
@@ -16146,6 +16068,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1636002277}
   m_CullTransparentMesh: 1
+--- !u!114 &1636002282
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1636002277}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a2c5d41cf3e45b4ca9e1355de5aff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSIM.Locomotion.TeleportToAnchor
+  anchor: {fileID: 1061398251}
+  provider: {fileID: 509824788}
+  verbose: 0
 --- !u!1 &1643293547
 GameObject:
   m_ObjectHideFlags: 0
@@ -16822,6 +16759,7 @@ GameObject:
   - component: {fileID: 1692407477}
   - component: {fileID: 1692407476}
   - component: {fileID: 1692407475}
+  - component: {fileID: 1692407478}
   m_Layer: 5
   m_Name: Button Mud Up L
   m_TagString: Untagged
@@ -16892,8 +16830,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1434194441}
-        m_TargetAssemblyTypeName: TeleportMudDownL, Assembly-CSharp
+      - m_Target: {fileID: 1692407478}
+        m_TargetAssemblyTypeName: VRSIM.Locomotion.TeleportToAnchor, Assembly-CSharp
         m_MethodName: Teleport
         m_Mode: 1
         m_Arguments:
@@ -16942,6 +16880,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1692407473}
   m_CullTransparentMesh: 1
+--- !u!114 &1692407478
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1692407473}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a2c5d41cf3e45b4ca9e1355de5aff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSIM.Locomotion.TeleportToAnchor
+  anchor: {fileID: 269700694}
+  provider: {fileID: 509824788}
+  verbose: 0
 --- !u!65 &1725798206
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -19636,6 +19589,7 @@ GameObject:
   - component: {fileID: 1989520544}
   - component: {fileID: 1989520543}
   - component: {fileID: 1989520542}
+  - component: {fileID: 1989520545}
   m_Layer: 5
   m_Name: Button Mud Up R
   m_TagString: Untagged
@@ -19706,8 +19660,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1434194440}
-        m_TargetAssemblyTypeName: TeleportMudDownR, Assembly-CSharp
+      - m_Target: {fileID: 1989520545}
+        m_TargetAssemblyTypeName: VRSIM.Locomotion.TeleportToAnchor, Assembly-CSharp
         m_MethodName: Teleport
         m_Mode: 1
         m_Arguments:
@@ -19756,6 +19710,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1989520540}
   m_CullTransparentMesh: 1
+--- !u!114 &1989520545
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1989520540}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a2c5d41cf3e45b4ca9e1355de5aff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSIM.Locomotion.TeleportToAnchor
+  anchor: {fileID: 44466589}
+  provider: {fileID: 509824788}
+  verbose: 0
 --- !u!1 &1995497300
 GameObject:
   m_ObjectHideFlags: 0
@@ -127138,16 +127107,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   joystickStick: {fileID: 813421024973100753}
-  joystickType: 0
+  connection: {fileID: 0}
   maxRotationAngle: 30
   useRotation: 1
   maxPositionOffset: 0.1
   smoothMovement: 1
   smoothSpeed: 10
   springReturnSpeed: 15
-  invertX: 0
   invertY: 0
-  showDebugInfo: 0
 --- !u!23 &8640536250124871621
 MeshRenderer:
   m_ObjectHideFlags: 0

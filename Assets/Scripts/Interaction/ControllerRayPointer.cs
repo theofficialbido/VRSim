@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using VRSIM.Binding;
 
 namespace VRSIM.Interaction
 {
@@ -31,7 +32,7 @@ namespace VRSIM.Interaction
 
         private LineRenderer _line;
         private InputAction _press;
-        private RigCommandButton _hovered;
+        private IRigPressable _hovered;
 
         private void Awake()
         {
@@ -62,14 +63,16 @@ namespace VRSIM.Interaction
             var direction = transform.forward;
             var endPoint = origin + direction * maxDistance;
 
-            RigCommandButton target = null;
+            IRigPressable target = null;
             if (Physics.Raycast(origin, direction, out var hit, maxDistance))
             {
                 endPoint = hit.point;
-                target = hit.collider.GetComponentInParent<RigCommandButton>();
+                // Any IRigPressable: a diagnostic button or a real bound control.
+                target = hit.collider.GetComponentInParent<MonoBehaviour>() as IRigPressable
+                         ?? FindPressable(hit.collider);
             }
 
-            if (target != _hovered)
+            if (!ReferenceEquals(target, _hovered))
             {
                 _hovered = target;
                 SetRayColour(target != null ? hitColour : idleColour);
@@ -80,6 +83,14 @@ namespace VRSIM.Interaction
 
             if (_hovered != null && _press.WasPressedThisFrame())
                 _hovered.Press();
+        }
+
+        /// <summary>Searches the hit object's parents for anything pressable.</summary>
+        private static IRigPressable FindPressable(Collider collider)
+        {
+            foreach (var behaviour in collider.GetComponentsInParent<MonoBehaviour>())
+                if (behaviour is IRigPressable pressable) return pressable;
+            return null;
         }
 
         private void SetRayColour(Color colour)

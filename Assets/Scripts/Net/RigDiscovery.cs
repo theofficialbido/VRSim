@@ -73,31 +73,41 @@ namespace VRSIM.Net
                 yield break;
             }
 
-            while (Time.realtimeSinceStartup < deadline && result == null)
+            // try/finally, because the caller stops this coroutine whenever it
+            // reconnects or disconnects. Unity disposes the stopped iterator,
+            // which runs the finally -- without it every restart mid-discovery
+            // abandoned a bound UDP socket.
+            try
             {
-                // Poll rather than block, so we yield a frame between checks.
-                if (client.Available > 0)
+                while (Time.realtimeSinceStartup < deadline && result == null)
                 {
-                    IPEndPoint from = null;
-                    byte[] data = null;
-                    try
+                    // Poll rather than block, so we yield a frame between checks.
+                    if (client.Available > 0)
                     {
-                        from = new IPEndPoint(IPAddress.Any, 0);
-                        data = client.Receive(ref from);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogWarning($"[RigDiscovery] receive failed: {ex.Message}");
+                        IPEndPoint from = null;
+                        byte[] data = null;
+                        try
+                        {
+                            from = new IPEndPoint(IPAddress.Any, 0);
+                            data = client.Receive(ref from);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogWarning($"[RigDiscovery] receive failed: {ex.Message}");
+                        }
+
+                        if (data != null)
+                            result = Parse(data, from);
                     }
 
-                    if (data != null)
-                        result = Parse(data, from);
+                    yield return null;
                 }
-
-                yield return null;
+            }
+            finally
+            {
+                client.Dispose();
             }
 
-            client.Dispose();
             onComplete?.Invoke(result);
         }
 

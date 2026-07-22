@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using TMPro;
 using UnityEngine;
+using VRSIM.Binding;
 using VRSIM.Net;
 
 namespace VRSIM.Interaction
@@ -23,7 +24,7 @@ namespace VRSIM.Interaction
     /// and not a misconfigured binding. The real control library will use XRI
     /// interactables properly.
     /// </summary>
-    public class RigCommandButton : MonoBehaviour
+    public class RigCommandButton : MonoBehaviour, IRigPressable
     {
         public enum ButtonKind
         {
@@ -81,7 +82,6 @@ namespace VRSIM.Interaction
         private Vector3 _restScale;
 
         private bool _wantOn;
-        private string _pendingCommandId;
         private string _expectedStateValue;
         private float _rearmAt;
         private float _requestedAt;
@@ -93,7 +93,7 @@ namespace VRSIM.Interaction
             _renderer = GetComponentInChildren<Renderer>();
             _block = new MaterialPropertyBlock();
             _restScale = transform.localScale;
-            if (connection == null) connection = FindObjectOfType<RigConnection>();
+            if (connection == null) connection = FindAnyObjectByType<RigConnection>();
             SetVisual(Visual.Idle);
         }
 
@@ -117,6 +117,9 @@ namespace VRSIM.Interaction
                 return;
             }
         }
+
+        /// <summary>What a pointer shows when aimed at this button.</summary>
+        public string PressableLabel => controlId + "\n" + _status;
 
         /// <summary>Sends the command. Public so it can also be driven from a UI or a test.</summary>
         public void Press()
@@ -160,7 +163,7 @@ namespace VRSIM.Interaction
             _status = $"sent {value}";
             _requestedAt = Time.realtimeSinceStartup;
 
-            _pendingCommandId = connection.SendCommand(controlId, value, "set", ack =>
+            connection.SendCommand(controlId, value, "set", ack =>
             {
                 if (ack.Accepted)
                 {
@@ -170,7 +173,6 @@ namespace VRSIM.Interaction
                 }
                 else
                 {
-                    _pendingCommandId = null;
                     _expectedStateValue = null;
                     _wantOn = !_wantOn; // the engine refused, so undo the intent
                     _status = ack.Reason ?? ack.Status;
@@ -219,7 +221,6 @@ namespace VRSIM.Interaction
             var ms = (Time.realtimeSinceStartup - _requestedAt) * 1000f;
             _status = $"confirmed in {ms:0} ms";
             _expectedStateValue = null;
-            _pendingCommandId = null;
             SetVisual(Visual.Confirmed);
             transform.localScale = _restScale;
         }

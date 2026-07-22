@@ -259,7 +259,9 @@ present keys replace, `null` deletes, absent keys are untouched.
     "casing_psi": 400.0,
     "choke_position": 0.35,
     "total_strokes": 14820.0,
-    "total_volume_bbl": 512.4
+    "total_volume_bbl": 512.4,
+    "hold_active": false,
+    "reset_active": false
   },
   "alarms": []
 }

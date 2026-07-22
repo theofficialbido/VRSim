@@ -100,5 +100,13 @@ namespace VRSIM.State
         [JsonProperty("choke_position")] public float ChokePosition;
         [JsonProperty("total_strokes")] public float TotalStrokes;
         [JsonProperty("total_volume_bbl")] public float TotalVolumeBbl;
+
+        /// <summary>
+        /// Hold and Reset indicator lamps on the physical panel. Added in
+        /// response to the panel having lamps the protocol did not model, which
+        /// left them undrivable without inventing a meaning for them.
+        /// </summary>
+        [JsonProperty("hold_active")] public bool HoldActive;
+        [JsonProperty("reset_active")] public bool ResetActive;
     }
 }
